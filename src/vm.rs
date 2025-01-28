@@ -1,3 +1,4 @@
+use crate::compiler::Compiler;
 use crate::debug::disassemble_instruction;
 
 use crate::{
@@ -15,7 +16,7 @@ pub trait VM<'a> {
         F: FnOnce(f64, f64) -> f64;
     fn reset_stack(&mut self);
     fn run(&mut self) -> InterpretResult;
-    fn interpret(&mut self, chunk: &'a Chunk) -> InterpretResult;
+    fn interpret(&mut self, code: &str) -> InterpretResult;
     fn push(&mut self, value: Value);
     fn pop(&mut self) -> &Value;
 }
@@ -116,10 +117,14 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
         }
     }
 
-    fn interpret(&mut self, chunk: &'a Chunk) -> InterpretResult {
-        self.chunk = Some(chunk);
-        self.ip = self.chunk.as_ref().unwrap().code.as_ptr();
-        self.run()
+    fn interpret(&mut self, code: &str) -> InterpretResult {
+        // self.chunk = Some(chunk);
+        // self.ip = self.chunk.as_ref().unwrap().code.as_ptr();
+        // self.run()
+
+        Compiler::compile(code);
+
+        InterpretResult::InterpretOk
     }
 
     fn push(&mut self, value: Value) {
