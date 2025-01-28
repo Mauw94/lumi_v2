@@ -5,11 +5,11 @@ pub fn disassemble_chunk(chunk: Chunk, chunk_name: &str) {
 
     let mut offset = 0;
     while offset < chunk.count {
-        offset += disassble_instruction(&chunk, offset);
+        offset += disassemble_instruction(&chunk, offset);
     }
 }
 
-fn disassble_instruction(chunk: &Chunk, offset: usize) -> usize {
+pub fn disassemble_instruction(chunk: &Chunk, offset: usize) -> usize {
     print!("{:04} ", offset);
     if offset > 0 && chunk.lines[offset] == chunk.lines[offset - 1] {
         print!("   | ");

@@ -1,3 +1,5 @@
+use std::fmt::Error;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Number(f64),
@@ -6,6 +8,10 @@ pub enum Value {
 }
 
 impl Value {
+    pub fn default() -> Self {
+        Value::Nil
+    }
+
     pub fn is_bool(&self) -> bool {
         matches!(self, Value::Bool(_))
     }
@@ -45,9 +51,16 @@ impl Value {
     pub fn number_val(value: f64) -> Self {
         Value::Number(value)
     }
+
+    pub fn negate(&self) -> Result<Value, String> {
+        return match self {
+            Value::Number(n) => Ok(Value::Number(-n)),
+            _ => Err("Negation is only supported for numbers".to_string()),
+        };
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ValueArray {
     pub values: Vec<Value>,
 }
