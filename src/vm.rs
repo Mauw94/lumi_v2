@@ -1,3 +1,4 @@
+use crate::chunk::Write;
 use crate::compiler::Compiler;
 use crate::debug::disassemble_instruction;
 
@@ -79,52 +80,63 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
     }
 
     fn run(&mut self) -> InterpretResult {
-        loop {
-            #[cfg(feature = "trace_exec")]
-            trace_execution(self);
+        // loop {
+        //     #[cfg(feature = "trace_exec")]
+        //     trace_execution(self);
 
-            let instruction = unsafe { self.read_byte() };
-            match OpCode::from_u8(instruction) {
-                Some(OpCode::Constant) => {
-                    let constant = self.read_constant();
-                    self.push(constant);
-                }
-                Some(OpCode::Negate) => {
-                    let value = self.pop().clone();
-                    match value.negate() {
-                        Ok(negated_value) => self.push(negated_value),
-                        Err(err) => panic!("{}", err),
-                    }
-                }
-                Some(OpCode::Add) => {
-                    self.binary_op(|a, b| a + b);
-                }
-                Some(OpCode::Subtract) => {
-                    self.binary_op(|a, b| a - b);
-                }
-                Some(OpCode::Multiply) => {
-                    self.binary_op(|a, b| a * b);
-                }
-                Some(OpCode::Divide) => {
-                    self.binary_op(|a, b| a / b);
-                }
-                Some(OpCode::Return) => {
-                    println!("{}", self.pop());
-                    return InterpretResult::InterpretOk;
-                }
-                _ => return InterpretResult::InterpretCompileError,
-            };
-        }
+        //     let instruction = unsafe { self.read_byte() };
+        //     match OpCode::from_u8(instruction) {
+        //         Some(OpCode::Constant) => {
+        //             let constant = self.read_constant();
+        //             self.push(constant);
+        //         }
+        //         Some(OpCode::Negate) => {
+        //             let value = self.pop().clone();
+        //             match value.negate() {
+        //                 Ok(negated_value) => self.push(negated_value),
+        //                 Err(err) => panic!("{}", err),
+        //             }
+        //         }
+        //         Some(OpCode::Add) => {
+        //             self.binary_op(|a, b| a + b);
+        //         }
+        //         Some(OpCode::Subtract) => {
+        //             self.binary_op(|a, b| a - b);
+        //         }
+        //         Some(OpCode::Multiply) => {
+        //             self.binary_op(|a, b| a * b);
+        //         }
+        //         Some(OpCode::Divide) => {
+        //             self.binary_op(|a, b| a / b);
+        //         }
+        //         Some(OpCode::Return) => {
+        //             println!("{}", self.pop());
+        //             return InterpretResult::InterpretOk;
+        //         }
+        //         _ => return InterpretResult::InterpretCompileError,
+        //     };
+        // }
+
+        InterpretResult::InterpretOk
     }
 
     fn interpret(&mut self, code: &str) -> InterpretResult {
-        // self.chunk = Some(chunk);
-        // self.ip = self.chunk.as_ref().unwrap().code.as_ptr();
-        // self.run()
+        let mut chunk = Chunk::new();
+        let mut compiler = Compiler::new(code, &mut chunk);
+        if !compiler.compile() {
+            chunk.free();
+            return InterpretResult::InterpretCompileError;
+        }
 
-        Compiler::compile(code);
+        self.chunk = Some(Box::leak(Box::new(chunk)));
+        self.ip = self.chunk.unwrap().code.as_ptr();
 
-        InterpretResult::InterpretOk
+        let result = self.run();
+        unsafe {
+            Box::from_raw(self.chunk.unwrap() as *const Chunk as *mut Chunk).free();
+        }
+
+        result
     }
 
     fn push(&mut self, value: Value) {

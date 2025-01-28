@@ -1,12 +1,13 @@
 use std::{collections::HashMap, fmt};
 
+#[derive(Debug)]
 pub struct Scanner<'a> {
     pub start: &'a [u8],
     pub current: &'a [u8],
     pub line: usize,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Token<'a> {
     pub token_type: TokenType,
     pub start: &'a [u8],
@@ -14,7 +15,18 @@ pub struct Token<'a> {
     pub line: usize,
 }
 
-#[derive(Debug, PartialEq)]
+impl<'a> Token<'a> {
+    pub fn default() -> Self {
+        Self {
+            token_type: TokenType::Nil,
+            start: &[],
+            length: 0,
+            line: 0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TokenType {
     LeftParen,
     RightParen,
@@ -56,7 +68,7 @@ pub enum TokenType {
     True,
     Var,
     While,
-    Error(String),
+    Error,
     Eof,
 }
 
@@ -103,7 +115,7 @@ impl fmt::Display for TokenType {
             TokenType::True => write!(f, "True"),
             TokenType::Var => write!(f, "Var"),
             TokenType::While => write!(f, "While"),
-            TokenType::Error(msg) => write!(f, "Error({})", msg),
+            TokenType::Error => write!(f, "Error()"),
             TokenType::Eof => write!(f, "EOF"),
         }
     }
@@ -118,7 +130,7 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    pub fn scan_token(&mut self) -> Token {
+    pub fn scan_token(&mut self) -> Token<'a> {
         self.skip_whitespace();
         self.start = self.current;
 
@@ -185,8 +197,7 @@ impl<'a> Scanner<'a> {
         self.current.len() == 0 || self.current[0] == b'\0'
     }
 
-    fn make_token(&self, token_type: TokenType) -> Token {
-        println!("emiting token: {}", token_type);
+    fn make_token(&self, token_type: TokenType) -> Token<'a> {
         Token {
             token_type,
             start: self.start,
@@ -195,9 +206,9 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    fn error_token(&self, message: String) -> Token {
+    fn error_token(&self, message: String) -> Token<'a> {
         Token {
-            token_type: TokenType::Error(message.clone()),
+            token_type: TokenType::Error,
             start: self.current,
             length: message.len(),
             line: self.line,
@@ -261,7 +272,7 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    fn string(&mut self) -> Token {
+    fn string(&mut self) -> Token<'a> {
         while self.peek() != '"' && !self.is_at_end() {
             if self.peek() == '\n' {
                 self.line += 1;
@@ -277,7 +288,7 @@ impl<'a> Scanner<'a> {
         return self.make_token(TokenType::String);
     }
 
-    fn number(&mut self) -> Token {
+    fn number(&mut self) -> Token<'a> {
         while self.peek().is_digit(10) {
             self.advance();
         }
@@ -293,7 +304,7 @@ impl<'a> Scanner<'a> {
         self.make_token(TokenType::Number)
     }
 
-    fn identifier(&mut self, first: char) -> Token {
+    fn identifier(&mut self, first: char) -> Token<'a> {
         let mut keyword: String = String::new();
         keyword.push(first);
 
@@ -327,7 +338,7 @@ impl<'a> Scanner<'a> {
             TokenType::Identifier
         } else {
             eprintln!("Keyword not found. {}", keyword);
-            return TokenType::Error(String::from("kaput"));
+            return TokenType::Error;
         }
     }
 }
