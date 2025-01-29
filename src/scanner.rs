@@ -250,7 +250,7 @@ impl<'a> Scanner<'a> {
             match c {
                 ' ' | '\r' | '\t' => {
                     self.advance();
-                    break;
+                    // break; If we break we skip over Windows-style newlines (\r\n).
                 }
                 '\n' => {
                     self.line += 1;

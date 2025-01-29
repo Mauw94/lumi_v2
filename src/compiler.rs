@@ -110,7 +110,7 @@ impl<'a> Compiler<'a> {
 
         loop {
             let token = self.scanner.scan_token();
-            // println!("{:?}", token);
+            // println!("TOKEN: {:?}", token);
             self.parser.current = token.clone();
             if self.parser.current.token_type != TokenType::Error {
                 break;
