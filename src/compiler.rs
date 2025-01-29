@@ -94,8 +94,6 @@ impl<'a> Compiler<'a> {
         loop {
             self.advance();
             self.expression();
-            println!("CHUNK constants: {:?}", self.chunk.constants);
-            println!("CHUNK CODE: {:?}", self.chunk.code);
             self.consume(TokenType::Eof, "Expect end of epxression.".as_bytes());
             self.end_compiler();
 
@@ -112,6 +110,7 @@ impl<'a> Compiler<'a> {
 
         loop {
             let token = self.scanner.scan_token();
+            // println!("{:?}", token);
             self.parser.current = token.clone();
             if self.parser.current.token_type != TokenType::Error {
                 break;
@@ -165,11 +164,6 @@ impl<'a> Compiler<'a> {
 
     fn end_compiler(&mut self) {
         self.emit_return();
-
-        #[cfg(feature = "trace_exec")]
-        if !self.parser.had_error {
-            disassemble_chunk(self.current_chunk().clone(), "code");
-        }
     }
 
     fn binary(&mut self) {

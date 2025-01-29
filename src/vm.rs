@@ -1,5 +1,6 @@
 use crate::chunk::Write;
 use crate::compiler::Compiler;
+#[cfg(feature = "trace_exec")]
 use crate::debug::disassemble_instruction;
 
 use crate::{
@@ -113,7 +114,7 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
                     println!("{}", self.pop());
                     return InterpretResult::InterpretOk;
                 }
-                _ => return InterpretResult::InterpretCompileError,
+                _ => return InterpretResult::InterpretRuntimeError,
             };
         }
     }
@@ -133,6 +134,7 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
         unsafe {
             Box::from_raw(self.chunk.unwrap() as *const Chunk as *mut Chunk).free();
         }
+        self.reset_stack();
 
         result
     }
