@@ -3,6 +3,7 @@ use std::collections::HashMap;
 
 use crate::{
     chunk::{Chunk, OpCode, Write},
+    debug::disassemble_chunk,
     scanner::{Scanner, Token, TokenType},
     value::Value,
 };
@@ -123,7 +124,6 @@ impl<'a> Compiler<'a> {
 
     fn consume(&mut self, token_type: TokenType, message: &[u8]) {
         if self.parser.current.token_type == TokenType::Eof {
-            println!("END OF FILE REACHED.");
             return;
         }
         if self.parser.current.token_type == token_type {
@@ -165,17 +165,17 @@ impl<'a> Compiler<'a> {
 
     fn end_compiler(&mut self) {
         self.emit_return();
+
+        #[cfg(feature = "trace_exec")]
+        if !self.parser.had_error {
+            disassemble_chunk(self.current_chunk().clone(), "code");
+        }
     }
 
     fn binary(&mut self) {
         let operator_type = self.parser.previous.token_type.clone();
-        println!("op type: {}", operator_type);
         let parse_rule = self.get_rule(operator_type.clone());
-        println!("parse rule precedence: {:?}", parse_rule.precedence);
-        println!(
-            "parse rule NEXT precedence: {:?}",
-            parse_rule.precedence + 1
-        );
+
         self.parse_precedence(parse_rule.precedence + 1);
 
         match operator_type {

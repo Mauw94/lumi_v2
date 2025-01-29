@@ -80,44 +80,42 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
     }
 
     fn run(&mut self) -> InterpretResult {
-        // loop {
-        //     #[cfg(feature = "trace_exec")]
-        //     trace_execution(self);
+        loop {
+            #[cfg(feature = "trace_exec")]
+            trace_execution(self);
 
-        //     let instruction = unsafe { self.read_byte() };
-        //     match OpCode::from_u8(instruction) {
-        //         Some(OpCode::Constant) => {
-        //             let constant = self.read_constant();
-        //             self.push(constant);
-        //         }
-        //         Some(OpCode::Negate) => {
-        //             let value = self.pop().clone();
-        //             match value.negate() {
-        //                 Ok(negated_value) => self.push(negated_value),
-        //                 Err(err) => panic!("{}", err),
-        //             }
-        //         }
-        //         Some(OpCode::Add) => {
-        //             self.binary_op(|a, b| a + b);
-        //         }
-        //         Some(OpCode::Subtract) => {
-        //             self.binary_op(|a, b| a - b);
-        //         }
-        //         Some(OpCode::Multiply) => {
-        //             self.binary_op(|a, b| a * b);
-        //         }
-        //         Some(OpCode::Divide) => {
-        //             self.binary_op(|a, b| a / b);
-        //         }
-        //         Some(OpCode::Return) => {
-        //             println!("{}", self.pop());
-        //             return InterpretResult::InterpretOk;
-        //         }
-        //         _ => return InterpretResult::InterpretCompileError,
-        //     };
-        // }
-
-        InterpretResult::InterpretOk
+            let instruction = unsafe { self.read_byte() };
+            match OpCode::from_u8(instruction) {
+                Some(OpCode::Constant) => {
+                    let constant = self.read_constant();
+                    self.push(constant);
+                }
+                Some(OpCode::Negate) => {
+                    let value = self.pop().clone();
+                    match value.negate() {
+                        Ok(negated_value) => self.push(negated_value),
+                        Err(err) => panic!("{}", err),
+                    }
+                }
+                Some(OpCode::Add) => {
+                    self.binary_op(|a, b| a + b);
+                }
+                Some(OpCode::Subtract) => {
+                    self.binary_op(|a, b| a - b);
+                }
+                Some(OpCode::Multiply) => {
+                    self.binary_op(|a, b| a * b);
+                }
+                Some(OpCode::Divide) => {
+                    self.binary_op(|a, b| a / b);
+                }
+                Some(OpCode::Return) => {
+                    println!("{}", self.pop());
+                    return InterpretResult::InterpretOk;
+                }
+                _ => return InterpretResult::InterpretCompileError,
+            };
+        }
     }
 
     fn interpret(&mut self, code: &str) -> InterpretResult {
