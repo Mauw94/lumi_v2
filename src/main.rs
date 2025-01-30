@@ -58,8 +58,8 @@ fn repl(vm: &mut VirtualMachine) {
     let mut input = String::new();
     while prompt(&mut input) {
         vm.interpret(&input);
-        vm.free_vm();
     }
+    vm.free_vm();
 }
 
 fn run_code(_code: &str) {
