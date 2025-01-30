@@ -24,6 +24,9 @@ pub fn disassemble_instruction(chunk: &Chunk, offset: usize) -> usize {
         Some(OpCode::Constant) => constant_instruction("OP_CONSTANT", chunk, offset),
         Some(OpCode::Nil) => simple_instruction("OP_NIL"),
         Some(OpCode::False) => simple_instruction("OP_FALSE"),
+        Some(OpCode::Equal) => simple_instruction("OP_EQUAL"),
+        Some(OpCode::Greater) => simple_instruction("OP_GREATER"),
+        Some(OpCode::Less) => simple_instruction("OP_LESS"),
         Some(OpCode::True) => simple_instruction("OP_TRUE"),
         Some(OpCode::Add) => simple_instruction("OP_ADD"),
         Some(OpCode::Subtract) => simple_instruction("OP_SUBTRACT"),
@@ -32,7 +35,7 @@ pub fn disassemble_instruction(chunk: &Chunk, offset: usize) -> usize {
         Some(OpCode::Not) => simple_instruction("OP_NOT"),
         Some(OpCode::Negate) => simple_instruction("OP_NEGATE"),
         Some(OpCode::Return) => simple_instruction("OP_RETURN"),
-        Some(_) | None => {
+        None => {
             println!("Unknown opcode {}", instruction);
             offset + 1
         }

@@ -174,10 +174,26 @@ impl<'a> Compiler<'a> {
         self.parse_precedence(parse_rule.precedence + 1);
 
         match operator_type {
+            TokenType::BangEqual => self.emit_bytes(OpCode::Equal as u8, OpCode::Not as u8),
+            TokenType::EqualEqual => self.emit_byte(OpCode::Equal as u8),
+            TokenType::Greater => self.emit_byte(OpCode::Greater as u8),
+            TokenType::GreaterEqual => self.emit_bytes(OpCode::Less as u8, OpCode::Not as u8),
+            TokenType::Less => self.emit_byte(OpCode::Less as u8),
+            TokenType::LessEqual => self.emit_bytes(OpCode::Greater as u8, OpCode::Not as u8),
             TokenType::Plus => self.emit_byte(OpCode::Add as u8),
             TokenType::Minus => self.emit_byte(OpCode::Subtract as u8),
             TokenType::Star => self.emit_byte(OpCode::Multiply as u8),
             TokenType::Slash => self.emit_byte(OpCode::Divide as u8),
+            _ => return,
+        }
+    }
+
+    fn literal(&mut self) {
+        let operator_type = self.parser.previous.token_type.clone();
+        match operator_type {
+            TokenType::False => self.emit_byte(OpCode::False as u8),
+            TokenType::Nil => self.emit_byte(OpCode::Nil as u8),
+            TokenType::True => self.emit_byte(OpCode::True as u8),
             _ => return,
         }
     }
@@ -203,10 +219,8 @@ impl<'a> Compiler<'a> {
 
         // emit the operator instruction.
         match operator_type {
-            TokenType::Minus => {
-                self.emit_byte(OpCode::Negate as u8);
-                return;
-            }
+            TokenType::Bang => self.emit_byte(OpCode::Not as u8),
+            TokenType::Minus => self.emit_byte(OpCode::Negate as u8),
             _ => return,
         }
     }
@@ -375,7 +389,7 @@ impl<'a> Compiler<'a> {
         rules.insert(
             TokenType::Bang,
             ParseRule {
-                prefix: None,
+                prefix: Some(Self::unary),
                 infix: None,
                 precedence: Precedence::None,
             },
@@ -384,8 +398,8 @@ impl<'a> Compiler<'a> {
             TokenType::BangEqual,
             ParseRule {
                 prefix: None,
-                infix: None,
-                precedence: Precedence::None,
+                infix: Some(Self::binary),
+                precedence: Precedence::Equality,
             },
         );
         rules.insert(
@@ -400,40 +414,40 @@ impl<'a> Compiler<'a> {
             TokenType::EqualEqual,
             ParseRule {
                 prefix: None,
-                infix: None,
-                precedence: Precedence::None,
+                infix: Some(Self::binary),
+                precedence: Precedence::Equality,
             },
         );
         rules.insert(
             TokenType::Greater,
             ParseRule {
                 prefix: None,
-                infix: None,
-                precedence: Precedence::None,
+                infix: Some(Self::binary),
+                precedence: Precedence::Comparison,
             },
         );
         rules.insert(
             TokenType::GreaterEqual,
             ParseRule {
                 prefix: None,
-                infix: None,
-                precedence: Precedence::None,
+                infix: Some(Self::binary),
+                precedence: Precedence::Comparison,
             },
         );
         rules.insert(
-            TokenType::LeftBrace,
+            TokenType::Less,
             ParseRule {
                 prefix: None,
-                infix: None,
-                precedence: Precedence::None,
+                infix: Some(Self::binary),
+                precedence: Precedence::Comparison,
             },
         );
         rules.insert(
             TokenType::LessEqual,
             ParseRule {
                 prefix: None,
-                infix: None,
-                precedence: Precedence::None,
+                infix: Some(Self::binary),
+                precedence: Precedence::Comparison,
             },
         );
         rules.insert(
@@ -487,7 +501,7 @@ impl<'a> Compiler<'a> {
         rules.insert(
             TokenType::False,
             ParseRule {
-                prefix: None,
+                prefix: Some(Self::literal),
                 infix: None,
                 precedence: Precedence::None,
             },
@@ -519,7 +533,7 @@ impl<'a> Compiler<'a> {
         rules.insert(
             TokenType::Nil,
             ParseRule {
-                prefix: None,
+                prefix: Some(Self::literal),
                 infix: None,
                 precedence: Precedence::None,
             },
@@ -567,7 +581,7 @@ impl<'a> Compiler<'a> {
         rules.insert(
             TokenType::True,
             ParseRule {
-                prefix: None,
+                prefix: Some(Self::literal),
                 infix: None,
                 precedence: Precedence::None,
             },

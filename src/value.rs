@@ -22,7 +22,7 @@ impl Value {
         matches!(self, Value::Number(_))
     }
 
-    fn as_bool(&self) -> Option<bool> {
+    pub fn as_bool(&self) -> Option<bool> {
         if let Value::Bool(value) = self {
             Some(*value)
         } else {
@@ -55,6 +55,10 @@ impl Value {
             Value::Number(n) => Ok(Value::Number(-n)),
             _ => Err("Negation is only supported for numbers".to_string()),
         };
+    }
+
+    pub fn is_same_type(&self, other: &Value) -> bool {
+        std::mem::discriminant(self) == std::mem::discriminant(other)
     }
 }
 

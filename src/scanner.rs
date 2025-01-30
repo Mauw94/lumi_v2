@@ -335,7 +335,7 @@ impl<'a> Scanner<'a> {
         keywords.insert("this", TokenType::This);
 
         if keywords.contains_key(keyword) {
-            TokenType::Identifier
+            keywords.get(keyword).unwrap().clone()
         } else {
             eprintln!("Keyword not found. {}", keyword);
             return TokenType::Error;

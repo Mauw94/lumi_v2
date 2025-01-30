@@ -18,6 +18,9 @@ pub trait VM<'a> {
     fn binary_op<F>(&mut self, op: F)
     where
         F: FnOnce(f64, f64) -> f64;
+    fn binary_op_bool<F>(&mut self, op: F)
+    where
+        F: FnOnce(f64, f64) -> bool;
     fn reset_stack(&mut self);
     fn runtime_error(&mut self, message: &str);
     fn run(&mut self) -> InterpretResult;
@@ -25,6 +28,8 @@ pub trait VM<'a> {
     fn push(&mut self, value: Value);
     fn pop(&mut self) -> &Value;
     fn peek(&mut self, distance: i32) -> &Value;
+    fn is_falsey(&mut self, value: Value) -> bool;
+    fn values_equal(&self, a: Value, b: Value) -> bool;
 }
 
 pub enum InterpretResult {
@@ -99,8 +104,21 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
         let a = self.pop().clone();
         if let (Value::Number(b), Value::Number(a)) = (b, a) {
             self.push(Value::Number(op(a, b)));
-        } else {
-            panic!("Binary operation requires two numeric values on the stack.");
+        }
+    }
+
+    fn binary_op_bool<F>(&mut self, op: F)
+    where
+        F: FnOnce(f64, f64) -> bool,
+    {
+        if !self.peek(0).is_number() || !self.peek(1).is_number() {
+            self.runtime_error("Operands must be numbers.");
+            return;
+        }
+        let b = self.pop().clone();
+        let a = self.pop().clone();
+        if let (Value::Number(b), Value::Number(a)) = (b, a) {
+            self.push(Value::Bool(op(a, b)));
         }
     }
 
@@ -137,6 +155,21 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
                 Some(OpCode::Divide) => {
                     self.binary_op(|a, b| a / b);
                 }
+                Some(OpCode::Not) => {
+                    let value = self.pop().clone();
+                    let is_falsey = self.is_falsey(value);
+                    self.push(Value::Bool(is_falsey));
+                }
+                Some(OpCode::Nil) => self.push(Value::Nil),
+                Some(OpCode::True) => self.push(Value::Bool(true)),
+                Some(OpCode::False) => self.push(Value::Bool(false)),
+                Some(OpCode::Equal) => {
+                    let a = self.pop().clone();
+                    let b = self.pop().clone();
+                    self.push(Value::Bool(self.values_equal(a, b)));
+                }
+                Some(OpCode::Greater) => self.binary_op_bool(|a, b| a > b),
+                Some(OpCode::Less) => self.binary_op_bool(|a, b| a < b),
                 Some(OpCode::Return) => {
                     println!("{}", self.pop());
                     return InterpretResult::InterpretOk;
@@ -186,6 +219,17 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
         } else {
             panic!("Stack is not big enough to peek so far.");
         }
+    }
+
+    fn is_falsey(&mut self, value: Value) -> bool {
+        value.is_nil() || (value.is_bool() && !value.as_bool().unwrap())
+    }
+
+    fn values_equal(&self, a: Value, b: Value) -> bool {
+        if !a.is_same_type(&b) {
+            return false;
+        }
+        a == b
     }
 }
 
