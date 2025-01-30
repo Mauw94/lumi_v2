@@ -1,12 +1,12 @@
 use std::io::{self, Write};
 use std::rc::Rc;
 
+use crate::chunk::ChunkWrite;
 use crate::compiler::Compiler;
 #[cfg(feature = "trace_exec")]
 use crate::debug::disassemble_instruction;
 use crate::memory::free_objects;
-use crate::value::{self, ObjString};
-use crate::{chunk::ChunkWrite, value::Obj};
+use crate::object::{Obj, ObjString};
 
 use crate::{
     chunk::{Chunk, OpCode},
@@ -276,7 +276,7 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
             Value::Number(_) => a == b,
             Value::Bool(_) => a == b,
             Value::Object(ref obj) => match &**obj {
-                value::Obj::String(_) => a.as_c_string() == b.as_c_string(),
+                Obj::String(_) => a.as_c_string() == b.as_c_string(),
             },
             Value::Nil => a == b,
         }

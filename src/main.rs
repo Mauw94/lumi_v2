@@ -14,6 +14,7 @@ mod scanner;
 mod utils;
 mod value;
 mod vm;
+mod object;
 
 fn main() {
     // let mut chunk = Chunk::new();

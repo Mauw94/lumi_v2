@@ -5,9 +5,10 @@ use std::{collections::HashMap, rc::Rc};
 use crate::debug::disassemble_instruction;
 use crate::{
     chunk::{Chunk, ChunkWrite, OpCode},
+    object::{Obj, ObjString},
     scanner::{Scanner, Token, TokenType},
     utils::strtod_manual,
-    value::{Obj, ObjString, Value},
+    value::Value,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
