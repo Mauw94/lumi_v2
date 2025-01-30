@@ -52,14 +52,14 @@ pub struct Chunk {
     pub constants: ValueArray,
 }
 
-pub trait Write {
+pub trait ChunkWrite {
     fn new() -> Self;
     fn write_chunk(&mut self, byte: u8, line: i32);
     fn add_constants(&mut self, value: Value) -> usize;
     fn free(&mut self);
 }
 
-impl Write for Chunk {
+impl ChunkWrite for Chunk {
     fn new() -> Self {
         Self {
             count: 0,

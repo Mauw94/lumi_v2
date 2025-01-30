@@ -2,9 +2,10 @@ use core::str;
 use std::collections::HashMap;
 
 use crate::{
-    chunk::{Chunk, OpCode, Write},
+    chunk::{Chunk, ChunkWrite, OpCode},
     debug::disassemble_chunk,
     scanner::{Scanner, Token, TokenType},
+    utils::strtod_manual,
     value::Value,
 };
 
@@ -190,24 +191,8 @@ impl<'a> Compiler<'a> {
     }
 
     fn number(&mut self) {
-        // println!("{:?}", token.start);
-        let val = Self::strtod_manual(&self.parser.previous.start).unwrap();
+        let val = strtod_manual(&self.parser.previous.start).unwrap();
         self.emit_constant(Value::Number(val));
-    }
-
-    // TODO: move to some utils
-    fn strtod_manual(input: &[u8]) -> Option<f64> {
-        let input_str = str::from_utf8(input).ok()?;
-
-        // Extract the numeric prefix
-        let numeric_part: String = input_str.chars().take_while(|c| c.is_digit(10)).collect();
-
-        if numeric_part.is_empty() {
-            None
-        } else {
-            let parsed = numeric_part.parse::<f64>().ok()?;
-            Some(parsed)
-        }
     }
 
     fn unary(&mut self) {

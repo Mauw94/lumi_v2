@@ -1,8 +1,6 @@
-use std::fmt::Error;
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
-    Number(f64),
+    Number(f64), // TODO: implement like lumi_v1
     Bool(bool),
     Nil,
 }

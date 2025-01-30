@@ -4,9 +4,6 @@ use std::{
     path::Path,
 };
 
-use chunk::{Chunk, OpCode};
-use debug::disassemble_chunk;
-use value::Value;
 use vm::{VirtualMachine, VM};
 
 mod chunk;
@@ -14,6 +11,7 @@ mod compiler;
 mod debug;
 mod memory;
 mod scanner;
+mod utils;
 mod value;
 mod vm;
 
@@ -63,7 +61,9 @@ fn repl(vm: &mut VirtualMachine) {
     }
 }
 
-fn run_code(code: &str) {}
+fn run_code(_code: &str) {
+    todo!()
+}
 
 fn prompt(input: &mut String) -> bool {
     input.clear();
