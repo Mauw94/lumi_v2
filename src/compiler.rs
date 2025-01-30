@@ -1,9 +1,10 @@
 use core::str;
 use std::{collections::HashMap, rc::Rc};
 
+#[cfg(feature = "trace_exec")]
+use crate::debug::disassemble_instruction;
 use crate::{
     chunk::{Chunk, ChunkWrite, OpCode},
-    debug::disassemble_chunk,
     scanner::{Scanner, Token, TokenType},
     utils::strtod_manual,
     value::{Obj, ObjString, Value},
@@ -102,6 +103,7 @@ impl<'a> Compiler<'a> {
         }
     }
 
+    #[allow(dead_code)]
     fn current_chunk(&self) -> &Chunk {
         &self.chunk
     }

@@ -106,7 +106,7 @@ impl Value {
         self.is_object() && self.obj_type().unwrap() == object_type
     }
 
-    pub fn as_string(&self) -> Option<&Rc<ObjString>> {
+    pub fn as_string_obj(&self) -> Option<&Rc<ObjString>> {
         match self {
             Value::Object(obj) => match &**obj {
                 Obj::String(obj_string) => Some(obj_string),
@@ -116,7 +116,7 @@ impl Value {
     }
 
     pub fn as_c_string(&self) -> Option<&str> {
-        self.as_string().map(|s| s.as_str())
+        self.as_string_obj().map(|s| s.as_str())
     }
 
     pub fn negate(&self) -> Result<Value, String> {

@@ -4,7 +4,8 @@ use std::rc::Rc;
 use crate::compiler::Compiler;
 #[cfg(feature = "trace_exec")]
 use crate::debug::disassemble_instruction;
-use crate::value::ObjString;
+use crate::memory::free_objects;
+use crate::value::{self, ObjString};
 use crate::{chunk::ChunkWrite, value::Obj};
 
 use crate::{
@@ -48,6 +49,7 @@ pub struct VirtualMachine<'a> {
     ip: *const u8,
     stack: [Value; STACK_MAX],
     stack_top: i32,
+    objects: Box<Vec<&'a Obj>>,
 }
 
 impl<'a> VM<'a> for VirtualMachine<'a> {
@@ -57,6 +59,7 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
             ip: std::ptr::null(),
             stack: core::array::from_fn(|_| Value::default()),
             stack_top: 0,
+            objects: Box::new(Vec::new()),
         }
     }
 
@@ -81,7 +84,7 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
     }
 
     fn free_vm(&self) {
-        todo!()
+        free_objects(self.objects.clone());
     }
 
     unsafe fn read_byte(&mut self) -> u8 {
@@ -134,6 +137,10 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
             match OpCode::from_u8(instruction) {
                 Some(OpCode::Constant) => {
                     let constant = self.read_constant();
+                    if constant.is_object() {
+                        let obj = constant.as_object().unwrap();
+                        self.objects.push(Box::leak(Box::new(obj.clone())));
+                    }
                     self.push(constant);
                 }
                 Some(OpCode::Negate) => {
@@ -242,15 +249,15 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
         let b = self.pop().clone();
         let a = self.pop().clone();
 
-        if b.as_c_string().is_some() && b.as_c_string().is_some() {
-            let new_val = a.as_c_string().unwrap().to_string() + b.as_c_string().unwrap();
+        let b_str = b.as_string_obj().unwrap().clone();
+        let a_str = a.as_string_obj().unwrap().clone();
 
-            let value = Value::Object(Box::new(Obj::String(Rc::new(ObjString::new(
-                new_val.as_bytes(),
-                new_val.as_bytes().len(),
-            )))));
-            self.push(value);
-        }
+        let new_val = a_str.to_string() + &b_str.to_string();
+        let value = Value::Object(Box::new(Obj::String(Rc::new(ObjString::new(
+            new_val.as_bytes(),
+            new_val.as_bytes().len(),
+        )))));
+        self.push(value);
     }
 
     fn values_equal(&self, a: Value, b: Value) -> bool {
@@ -261,9 +268,9 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
             Value::Number(_) => a == b,
             Value::Bool(_) => a == b,
             Value::Object(ref obj) => match &**obj {
-                crate::value::Obj::String(_) => a.as_c_string() == b.as_c_string(),
+                value::Obj::String(_) => a.as_c_string() == b.as_c_string(),
             },
-            Value::Nil => todo!(),
+            Value::Nil => a == b,
         }
     }
 }
