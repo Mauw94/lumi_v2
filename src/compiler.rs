@@ -1,12 +1,12 @@
 use core::str;
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 
 use crate::{
     chunk::{Chunk, ChunkWrite, OpCode},
     debug::disassemble_chunk,
     scanner::{Scanner, Token, TokenType},
     utils::strtod_manual,
-    value::Value,
+    value::{Obj, ObjString, Value},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -209,6 +209,13 @@ impl<'a> Compiler<'a> {
     fn number(&mut self) {
         let val = strtod_manual(&self.parser.previous.start).unwrap();
         self.emit_constant(Value::Number(val));
+    }
+
+    fn string(&mut self) {
+        let bytes = &self.parser.previous.start[1..];
+        let length = self.parser.previous.length - 2;
+        let obj_str = ObjString::new(bytes, length);
+        self.emit_constant(Value::Object(Box::new(Obj::String(Rc::new(obj_str)))));
     }
 
     fn unary(&mut self) {
@@ -461,7 +468,7 @@ impl<'a> Compiler<'a> {
         rules.insert(
             TokenType::String,
             ParseRule {
-                prefix: None,
+                prefix: Some(Self::string),
                 infix: None,
                 precedence: Precedence::None,
             },

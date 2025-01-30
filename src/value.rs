@@ -1,4 +1,7 @@
-use std::ffi::{c_char, CStr, CString};
+use std::{
+    ffi::{c_char, CStr, CString},
+    rc::Rc,
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ObjType {
@@ -6,13 +9,12 @@ pub enum ObjType {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Obj {
-    obj_type: ObjType,
+pub enum Obj {
+    String(Rc<ObjString>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ObjString {
-    obj: Obj,
     length: usize,
     chars: *mut c_char,
 }
@@ -88,7 +90,9 @@ impl Value {
 
     pub fn obj_type(&self) -> Option<ObjType> {
         match self {
-            Value::Object(obj) => Some(obj.obj_type.clone()),
+            Value::Object(obj) => match &**obj {
+                Obj::String(_) => Some(ObjType::String),
+            },
             _ => None,
         }
     }
@@ -99,19 +103,16 @@ impl Value {
 
     pub fn is_obj_type(&self, object_type: ObjType) -> bool {
         // We can unwrap here because self.is_object confirms that we're dealing with an object.
-        self.is_object() && self.as_object().unwrap().obj_type == object_type
+        self.is_object() && self.obj_type().unwrap() == object_type
     }
 
-    pub fn as_string(&self) -> Option<&ObjString> {
+    pub fn as_string(&self) -> Option<&Rc<ObjString>> {
         match self {
-            Value::Object(obj) => {
-                let ObjType::String = obj.obj_type;
-                return Some(unsafe { &*(obj.as_ref() as *const Obj as *const ObjString) });
-            }
-            _ => (),
+            Value::Object(obj) => match &**obj {
+                Obj::String(obj_string) => Some(obj_string),
+            },
+            _ => None,
         }
-
-        None
     }
 
     pub fn as_c_string(&self) -> Option<&str> {
@@ -163,24 +164,24 @@ impl std::fmt::Display for Value {
             Value::Bool(val) => write!(f, "{}", val),
             Value::Nil => write!(f, "nil"),
             Value::Number(val) => write!(f, "{}", val),
-            Value::Object(obj) => write!(f, "{:?}", obj),
+            Value::Object(obj) => match &**obj {
+                Obj::String(obj_string) => write!(f, "{}", obj_string.as_str()),
+            },
         }
     }
 }
 
 impl ObjString {
-    pub fn new(s: &str) -> Self {
-        let c_string = CString::new(s).expect("CString conversion failed.");
+    pub fn new(bytes: &[u8], length: usize) -> Self {
+        let slice = &bytes[..length];
+        let s =
+            String::from_utf8(slice.to_vec()).expect("Failed to convert to valid UTF-8 string.");
+
+        let c_string = CString::new(s.clone()).expect("CString conversion failed.");
         let length = s.len();
         let chars = c_string.into_raw();
 
-        Self {
-            obj: Obj {
-                obj_type: ObjType::String,
-            },
-            length,
-            chars,
-        }
+        Self { length, chars }
     }
 
     pub fn as_str(&self) -> &str {
