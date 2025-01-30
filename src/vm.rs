@@ -50,6 +50,7 @@ pub struct VirtualMachine<'a> {
     stack: [Value; STACK_MAX],
     stack_top: i32,
     objects: Box<Vec<&'a Obj>>,
+    had_error: bool,
 }
 
 impl<'a> VM<'a> for VirtualMachine<'a> {
@@ -60,6 +61,7 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
             stack: core::array::from_fn(|_| Value::default()),
             stack_top: 0,
             objects: Box::new(Vec::new()),
+            had_error: false,
         }
     }
 
@@ -104,6 +106,7 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
     {
         if !self.peek(0).is_number() || !self.peek(1).is_number() {
             self.runtime_error("Operands must be numbers.");
+            self.had_error = true;
             return;
         }
         let b = self.pop().clone();
@@ -119,6 +122,7 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
     {
         if !self.peek(0).is_number() || !self.peek(1).is_number() {
             self.runtime_error("Operands must be numbers.");
+            self.had_error = true;
             return;
         }
         let b = self.pop().clone();
@@ -132,6 +136,10 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
         loop {
             #[cfg(feature = "trace_exec")]
             trace_execution(self);
+
+            if self.had_error {
+                return InterpretResult::InterpretRuntimeError;
+            }
 
             let instruction = unsafe { self.read_byte() };
             match OpCode::from_u8(instruction) {
