@@ -1,7 +1,4 @@
-use crate::{
-    memory::grow_capacity,
-    value::{Value, ValueArray},
-};
+use crate::value::{Value, ValueArray};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OpCode {
@@ -57,6 +54,7 @@ pub trait ChunkWrite {
     fn write_chunk(&mut self, byte: u8, line: i32);
     fn add_constants(&mut self, value: Value) -> usize;
     fn free(&mut self);
+    fn grow_capacity(&self, capacity: usize) -> usize;
 }
 
 impl ChunkWrite for Chunk {
@@ -72,7 +70,7 @@ impl ChunkWrite for Chunk {
 
     fn write_chunk(&mut self, byte: u8, line: i32) {
         if self.capacity <= self.count {
-            self.capacity = grow_capacity(self.capacity);
+            self.capacity = self.grow_capacity(self.capacity);
             self.code.reserve(self.capacity - self.code.len());
             self.lines.reserve(self.capacity - self.lines.len());
         }
@@ -91,5 +89,13 @@ impl ChunkWrite for Chunk {
         self.code.clear();
         self.lines.clear();
         self.constants.free();
+    }
+
+    fn grow_capacity(&self, capacity: usize) -> usize {
+        if capacity < 8 {
+            8
+        } else {
+            capacity * 2
+        }
     }
 }

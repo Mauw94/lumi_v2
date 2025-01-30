@@ -1,7 +1,4 @@
-use std::{
-    ffi::{c_char, CStr, CString},
-    rc::Rc,
-};
+use std::rc::Rc;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ObjType {
@@ -16,39 +13,26 @@ pub enum Obj {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ObjString {
     length: usize,
-    chars: *mut c_char,
+    chars: Vec<u8>,
 }
 
 impl ObjString {
     pub fn new(bytes: &[u8], length: usize) -> Self {
-        let slice = &bytes[..length];
-        let s =
-            String::from_utf8(slice.to_vec()).expect("Failed to convert to valid UTF-8 string.");
+        let chars = &bytes[..length];
 
-        let c_string = CString::new(s.clone()).expect("CString conversion failed.");
-        let length = s.len();
-        let chars = c_string.into_raw();
-
-        Self { length, chars }
+        Self {
+            length,
+            chars: chars.to_vec(),
+        }
     }
 
     pub fn as_str(&self) -> &str {
-        unsafe {
-            CStr::from_ptr(self.chars)
-                .to_str()
-                .expect("Faield to convert C string to Rust string.")
-        }
+        std::str::from_utf8(&self.chars).expect("Expecting a valid UTF-8 representation.")
     }
 
     pub fn to_string(&self) -> String {
-        unsafe { CStr::from_ptr(self.chars).to_string_lossy().into_owned() }
-    }
-
-    pub fn free(self) {
-        unsafe {
-            if !self.chars.is_null() {
-                let _ = CString::from_raw(self.chars);
-            }
-        }
+        std::str::from_utf8(&self.chars)
+            .expect("Expecting a valid UTF-8 representation.")
+            .to_string()
     }
 }

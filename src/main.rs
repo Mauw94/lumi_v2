@@ -9,34 +9,13 @@ use vm::{VirtualMachine, VM};
 mod chunk;
 mod compiler;
 mod debug;
-mod memory;
+mod object;
 mod scanner;
 mod utils;
 mod value;
 mod vm;
-mod object;
 
 fn main() {
-    // let mut chunk = Chunk::new();
-    // let mut vm = VirtualMachine::init_vm();
-
-    // let mut constant = chunk.add_constants(Value::Number(1.2));
-    // chunk.write_chunk(OpCode::Constant as u8, 123);
-    // chunk.write_chunk(constant as u8, 123);
-
-    // chunk.write_chunk(OpCode::Negate as u8, 123);
-
-    // chunk.write_chunk(OpCode::Constant as u8, 123);
-    // constant = chunk.add_constants(Value::Number(5.0));
-    // chunk.write_chunk(constant as u8, 123);
-
-    // chunk.write_chunk(OpCode::Add as u8, 123);
-
-    // chunk.write_chunk(OpCode::Return as u8, 123);
-
-    // vm.interpret(&chunk);
-    // disassemble_chunk(chunk, "test chunk");
-
     let mut vm = VirtualMachine::init_vm();
 
     let args: Vec<String> = env::args().collect();
@@ -47,7 +26,7 @@ fn main() {
         let input_folder = Path::new("runnables");
         let file_path = input_folder.join(filename);
         match fs::read_to_string(&file_path) {
-            Ok(content) => run_code(&content),
+            Ok(content) => run_code(&mut vm, &content),
             Err(err) => eprintln!("Error reading file: {}", err),
         };
     }
@@ -58,13 +37,14 @@ fn main() {
 fn repl(vm: &mut VirtualMachine) {
     let mut input = String::new();
     while prompt(&mut input) {
-        vm.interpret(&input);
+        benchmark!(vm.interpret(&input));
     }
     vm.free_vm();
 }
 
-fn run_code(_code: &str) {
-    todo!()
+fn run_code(vm: &mut VirtualMachine, code: &str) {
+    benchmark!(vm.interpret(code));
+    vm.free_vm();
 }
 
 fn prompt(input: &mut String) -> bool {
@@ -78,4 +58,22 @@ fn prompt(input: &mut String) -> bool {
         Ok(_) => true,
         Err(_) => false,
     }
+}
+
+#[macro_export]
+macro_rules! benchmark {
+    ($expr:expr) => {
+        #[cfg(feature = "bench")]
+        {
+            let start = std::time::Instant::now();
+            let result = $expr;
+            let duration = start.elapsed();
+            println!("Execution time: {}µs", duration.as_micros());
+            result
+        }
+        #[cfg(not(feature = "bench"))]
+        {
+            $expr
+        }
+    };
 }

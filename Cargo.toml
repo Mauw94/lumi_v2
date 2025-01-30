@@ -10,3 +10,4 @@ lexical = "7.0.4"
 
 [features]
 trace_exec = []
+bench = []

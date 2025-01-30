@@ -5,7 +5,6 @@ use crate::chunk::ChunkWrite;
 use crate::compiler::Compiler;
 #[cfg(feature = "trace_exec")]
 use crate::debug::disassemble_instruction;
-use crate::memory::free_objects;
 use crate::object::{Obj, ObjString};
 
 use crate::{
@@ -15,7 +14,7 @@ use crate::{
 
 pub trait VM<'a> {
     fn init_vm() -> Self;
-    fn free_vm(&self);
+    fn free_vm(&mut self);
     unsafe fn read_byte(&mut self) -> u8;
     fn read_constant(&mut self) -> Value;
     fn binary_op<F>(&mut self, op: F)
@@ -85,8 +84,13 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
         self.reset_stack();
     }
 
-    fn free_vm(&self) {
-        free_objects(self.objects.clone());
+    fn free_vm(&mut self) {
+        self.chunk = None;
+        self.ip = std::ptr::null();
+        self.stack = core::array::from_fn(|_| Value::default());
+        self.stack_top = 0;
+        self.objects = Box::new(Vec::new());
+        self.had_error = false;
     }
 
     unsafe fn read_byte(&mut self) -> u8 {
@@ -138,6 +142,7 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
             trace_execution(self);
 
             if self.had_error {
+                self.had_error = false;
                 return InterpretResult::InterpretRuntimeError;
             }
 
