@@ -149,10 +149,6 @@ impl ValueArray {
         self.values.clear();
     }
 
-    pub fn values_equal(&self, a: &Value, b: &Value) -> bool {
-        a == b
-    }
-
     pub fn len(&self) -> usize {
         self.values.len()
     }
@@ -190,6 +186,10 @@ impl ObjString {
                 .to_str()
                 .expect("Faield to convert C string to Rust string.")
         }
+    }
+
+    pub fn to_string(&self) -> String {
+        unsafe { CStr::from_ptr(self.chars).to_string_lossy().into_owned() }
     }
 
     pub fn free(self) {

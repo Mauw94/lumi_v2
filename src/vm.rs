@@ -1,9 +1,11 @@
 use std::io::{self, Write};
+use std::rc::Rc;
 
-use crate::chunk::ChunkWrite;
 use crate::compiler::Compiler;
 #[cfg(feature = "trace_exec")]
 use crate::debug::disassemble_instruction;
+use crate::value::ObjString;
+use crate::{chunk::ChunkWrite, value::Obj};
 
 use crate::{
     chunk::{Chunk, OpCode},
@@ -29,6 +31,7 @@ pub trait VM<'a> {
     fn pop(&mut self) -> &Value;
     fn peek(&mut self, distance: i32) -> &Value;
     fn is_falsey(&mut self, value: Value) -> bool;
+    fn concatenate(&mut self);
     fn values_equal(&self, a: Value, b: Value) -> bool;
 }
 
@@ -144,7 +147,17 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
                     }
                 }
                 Some(OpCode::Add) => {
-                    self.binary_op(|a, b| a + b);
+                    if self.peek(0).is_string() && self.peek(1).is_string() {
+                        self.concatenate();
+                    } else if self.peek(0).is_number() && self.peek(1).is_number() {
+                        let b = self.pop().clone();
+                        let a = self.pop().clone();
+                        if let (Value::Number(b), Value::Number(a)) = (b, a) {
+                            self.push(Value::Number(a + b));
+                        }
+                    } else {
+                        self.runtime_error("Operands must be two numbers or two strings.");
+                    }
                 }
                 Some(OpCode::Subtract) => {
                     self.binary_op(|a, b| a - b);
@@ -225,11 +238,33 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
         value.is_nil() || (value.is_bool() && !value.as_bool().unwrap())
     }
 
+    fn concatenate(&mut self) {
+        let b = self.pop().clone();
+        let a = self.pop().clone();
+
+        if b.as_c_string().is_some() && b.as_c_string().is_some() {
+            let new_val = a.as_c_string().unwrap().to_string() + b.as_c_string().unwrap();
+
+            let value = Value::Object(Box::new(Obj::String(Rc::new(ObjString::new(
+                new_val.as_bytes(),
+                new_val.as_bytes().len(),
+            )))));
+            self.push(value);
+        }
+    }
+
     fn values_equal(&self, a: Value, b: Value) -> bool {
         if !a.is_same_type(&b) {
             return false;
         }
-        a == b
+        match a {
+            Value::Number(_) => a == b,
+            Value::Bool(_) => a == b,
+            Value::Object(ref obj) => match &**obj {
+                crate::value::Obj::String(_) => a.as_c_string() == b.as_c_string(),
+            },
+            Value::Nil => todo!(),
+        }
     }
 }
 
