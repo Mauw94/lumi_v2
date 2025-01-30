@@ -1,7 +1,27 @@
+use std::ffi::{c_char, CStr, CString};
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ObjType {
+    String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Obj {
+    obj_type: ObjType,
+}
+
+#[derive(Debug)]
+pub struct ObjString {
+    obj: Obj,
+    length: usize,
+    chars: *mut c_char,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Number(f64), // TODO: implement like lumi_v1
     Bool(bool),
+    Object(Box<Obj>),
     Nil,
 }
 
@@ -22,6 +42,10 @@ impl Value {
         matches!(self, Value::Number(_))
     }
 
+    pub fn is_object(&self) -> bool {
+        matches!(self, Value::Object(_))
+    }
+
     pub fn as_bool(&self) -> Option<bool> {
         if let Value::Bool(value) = self {
             Some(*value)
@@ -38,6 +62,14 @@ impl Value {
         }
     }
 
+    pub fn as_object(&self) -> Option<Box<Obj>> {
+        if let Value::Object(obj) = self {
+            Some(obj.clone())
+        } else {
+            None
+        }
+    }
+
     pub fn bool_val(value: bool) -> Self {
         Value::Bool(value)
     }
@@ -48,6 +80,42 @@ impl Value {
 
     pub fn number_val(value: f64) -> Self {
         Value::Number(value)
+    }
+
+    pub fn obj_val(obj: Obj) -> Self {
+        Value::Object(Box::new(obj))
+    }
+
+    pub fn obj_type(&self) -> Option<ObjType> {
+        match self {
+            Value::Object(obj) => Some(obj.obj_type.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn is_string(&self) -> bool {
+        matches!(self.obj_type(), Some(ObjType::String))
+    }
+
+    pub fn is_obj_type(&self, object_type: ObjType) -> bool {
+        // We can unwrap here because self.is_object confirms that we're dealing with an object.
+        self.is_object() && self.as_object().unwrap().obj_type == object_type
+    }
+
+    pub fn as_string(&self) -> Option<&ObjString> {
+        match self {
+            Value::Object(obj) => {
+                let ObjType::String = obj.obj_type;
+                return Some(unsafe { &*(obj.as_ref() as *const Obj as *const ObjString) });
+            }
+            _ => (),
+        }
+
+        None
+    }
+
+    pub fn as_c_string(&self) -> Option<&str> {
+        self.as_string().map(|s| s.as_str())
     }
 
     pub fn negate(&self) -> Result<Value, String> {
@@ -95,6 +163,39 @@ impl std::fmt::Display for Value {
             Value::Bool(val) => write!(f, "{}", val),
             Value::Nil => write!(f, "nil"),
             Value::Number(val) => write!(f, "{}", val),
+            Value::Object(obj) => write!(f, "{:?}", obj),
+        }
+    }
+}
+
+impl ObjString {
+    pub fn new(s: &str) -> Self {
+        let c_string = CString::new(s).expect("CString conversion failed.");
+        let length = s.len();
+        let chars = c_string.into_raw();
+
+        Self {
+            obj: Obj {
+                obj_type: ObjType::String,
+            },
+            length,
+            chars,
+        }
+    }
+
+    pub fn as_str(&self) -> &str {
+        unsafe {
+            CStr::from_ptr(self.chars)
+                .to_str()
+                .expect("Faield to convert C string to Rust string.")
+        }
+    }
+
+    pub fn free(self) {
+        unsafe {
+            if !self.chars.is_null() {
+                let _ = CString::from_raw(self.chars);
+            }
         }
     }
 }
