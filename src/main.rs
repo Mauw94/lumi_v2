@@ -4,11 +4,13 @@ use std::{
     path::Path,
 };
 
+use sysinfo::System;
 use vm::{VirtualMachine, VM};
 
 mod chunk;
 mod compiler;
 mod debug;
+mod lnum;
 mod object;
 mod scanner;
 mod utils;
@@ -16,11 +18,13 @@ mod value;
 mod vm;
 
 fn main() {
+    let mut sysinfo = System::new_all();
+    sysinfo.refresh_all();
     let mut vm = VirtualMachine::init_vm();
 
     let args: Vec<String> = env::args().collect();
     if args.len() <= 1 {
-        repl(&mut vm);
+        repl(&mut vm, &sysinfo);
     } else {
         let filename = &args[1];
         let input_folder = Path::new("runnables");
@@ -34,10 +38,17 @@ fn main() {
     vm.free_vm();
 }
 
-fn repl(vm: &mut VirtualMachine) {
+fn repl(vm: &mut VirtualMachine, _sysinfo: &System) {
     let mut input = String::new();
     while prompt(&mut input) {
         benchmark!(vm.interpret(&input));
+
+        #[cfg(feature = "bench")]
+        if let Some(proc) = _sysinfo.process(sysinfo::get_current_pid().unwrap()) {
+            println!("Memory usage: {} bytes", proc.memory());
+        } else {
+            println!("Failed to get memory usage");
+        }
     }
     vm.free_vm();
 }

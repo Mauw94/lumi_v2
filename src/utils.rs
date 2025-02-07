@@ -9,6 +9,7 @@ pub fn strtod_manual(input: &[u8]) -> Option<f64> {
     if numeric_part.is_empty() {
         None
     } else {
+        // TODO: can alrdy parse here to LNum?
         let parsed = numeric_part.parse::<f64>().ok()?;
         Some(parsed)
     }
