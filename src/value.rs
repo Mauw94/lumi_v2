@@ -1,10 +1,13 @@
 use std::rc::Rc;
 
-use crate::object::{Obj, ObjString, ObjType};
+use crate::{
+    lnum::LNum,
+    object::{Obj, ObjString, ObjType},
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
-    Number(f64), // TODO: implement like lumi_v1
+    Number(LNum), // TODO: implement like lumi_v1
     Bool(bool),
     Object(Box<Obj>),
     Nil,
@@ -41,7 +44,7 @@ impl Value {
 
     pub fn as_number(&self) -> Option<f64> {
         if let Value::Number(value) = self {
-            Some(*value)
+            Some(value.real_val())
         } else {
             None
         }
@@ -64,7 +67,7 @@ impl Value {
     }
 
     pub fn number_val(value: f64) -> Self {
-        Value::Number(value)
+        Value::Number(LNum::new(value))
     }
 
     pub fn obj_val(obj: Obj) -> Self {
@@ -104,7 +107,7 @@ impl Value {
 
     pub fn negate(&self) -> Result<Value, String> {
         return match self {
-            Value::Number(n) => Ok(Value::Number(-n)),
+            Value::Number(n) => Ok(Value::Number(n.negate())),
             _ => Err("Negation is only supported for numbers".to_string()),
         };
     }

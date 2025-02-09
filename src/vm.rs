@@ -5,6 +5,7 @@ use crate::chunk::ChunkWrite;
 use crate::compiler::Compiler;
 #[cfg(feature = "trace_exec")]
 use crate::debug::disassemble_instruction;
+use crate::lnum::LNum;
 use crate::object::{Obj, ObjString};
 
 use crate::{
@@ -116,7 +117,9 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
         let b = self.pop().clone();
         let a = self.pop().clone();
         if let (Value::Number(b), Value::Number(a)) = (b, a) {
-            self.push(Value::Number(op(a, b)));
+            let b_val = b.real_val();
+            let a_val = a.real_val();
+            self.push(Value::Number(LNum::new(op(a_val, b_val))));
         }
     }
 
@@ -132,7 +135,9 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
         let b = self.pop().clone();
         let a = self.pop().clone();
         if let (Value::Number(b), Value::Number(a)) = (b, a) {
-            self.push(Value::Bool(op(a, b)));
+            let b_val = b.real_val();
+            let a_val = a.real_val();
+            self.push(Value::Bool(op(a_val, b_val)));
         }
     }
 
@@ -173,7 +178,9 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
                         let b = self.pop().clone();
                         let a = self.pop().clone();
                         if let (Value::Number(b), Value::Number(a)) = (b, a) {
-                            self.push(Value::Number(a + b));
+                            let b_val = b.real_val();
+                            let a_val = a.real_val();
+                            self.push(Value::Number(LNum::new(a_val + b_val)));
                         }
                     } else {
                         self.runtime_error("Operands must be two numbers or two strings.");
