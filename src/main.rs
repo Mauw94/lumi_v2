@@ -1,6 +1,6 @@
 use std::{
     env, fs,
-    io::{stdin, stdout, Write},
+    io::{self, stdin, stdout, Write},
     path::Path,
 };
 
@@ -41,7 +41,7 @@ fn main() {
 fn repl(vm: &mut VirtualMachine, _sysinfo: &System) {
     let mut input = String::new();
     while prompt(&mut input) {
-        benchmark!(vm.interpret(&input));
+        benchmark!(interpret(vm, &input));
 
         #[cfg(feature = "bench")]
         if let Some(proc) = _sysinfo.process(sysinfo::get_current_pid().unwrap()) {
@@ -51,6 +51,20 @@ fn repl(vm: &mut VirtualMachine, _sysinfo: &System) {
         }
     }
     vm.free_vm();
+}
+
+fn interpret(vm: &mut VirtualMachine, code: &str) {
+    let stderr = io::stderr();
+    let mut handle = stderr.lock();
+    match vm.interpret(code) {
+        vm::InterpretResult::InterpretOk => writeln!(handle, "{}", "").unwrap(),
+        vm::InterpretResult::InterpretCompileError => {
+            writeln!(handle, "{}", "[COMPILE_ERROR]").unwrap()
+        }
+        vm::InterpretResult::InterpretRuntimeError => {
+            writeln!(handle, "{}", "[RUNTIME_ERROR]").unwrap()
+        }
+    }
 }
 
 fn run_code(vm: &mut VirtualMachine, code: &str) {

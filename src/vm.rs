@@ -25,7 +25,7 @@ pub trait VM<'a> {
     where
         F: FnOnce(f64, f64) -> bool;
     fn reset_stack(&mut self);
-    fn runtime_error(&mut self, message: &str);
+    fn runtime_error(&mut self, message: &str) -> InterpretResult;
     fn run(&mut self) -> InterpretResult;
     fn interpret(&mut self, code: &str) -> InterpretResult;
     fn push(&mut self, value: Value);
@@ -69,7 +69,7 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
         self.stack_top = 0;
     }
 
-    fn runtime_error(&mut self, message: &str) {
+    fn runtime_error(&mut self, message: &str) -> InterpretResult {
         let stderr = io::stderr();
         let mut handle = stderr.lock();
         writeln!(handle, "{}", message).unwrap();
@@ -83,6 +83,7 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
         writeln!(handle, "[line {}] in script", line).unwrap();
 
         self.reset_stack();
+        return InterpretResult::InterpretRuntimeError;
     }
 
     fn free_vm(&mut self) {
@@ -163,7 +164,7 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
                 }
                 Some(OpCode::Negate) => {
                     if !self.peek(0).is_number() {
-                        self.runtime_error("Operand must be a number.");
+                        return self.runtime_error("Operand must be a number.");
                     }
                     let value = self.pop().clone();
                     match value.negate() {
@@ -183,7 +184,7 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
                             self.push(Value::Number(LNum::new(a_val + b_val)));
                         }
                     } else {
-                        self.runtime_error("Operands must be two numbers or two strings.");
+                        return self.runtime_error("Operands must be two numbers or two strings.");
                     }
                 }
                 Some(OpCode::Subtract) => {
