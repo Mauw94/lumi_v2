@@ -17,3 +17,13 @@ pub fn strtod_manual(input: &[u8]) -> Option<LNum> {
         Some(lnum)
     }
 }
+
+pub fn hash_str(chars: &[u8], length: usize) -> u32 {
+    let mut hash: u32 = 2166136261;
+    for i in 0..length {
+        hash ^= chars[i] as u32;
+        hash = hash.wrapping_mul(16777619);
+    }
+
+    hash
+}

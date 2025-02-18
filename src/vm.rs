@@ -14,7 +14,7 @@ use crate::{
 };
 
 pub trait VM<'a> {
-    fn init_vm() -> Self;
+    fn init_vm(code: &'a str) -> Self;
     fn free_vm(&mut self);
     unsafe fn read_byte(&mut self) -> u8;
     fn read_constant(&mut self) -> Value;
@@ -27,7 +27,7 @@ pub trait VM<'a> {
     fn reset_stack(&mut self);
     fn runtime_error(&mut self, message: &str);
     fn run(&mut self) -> InterpretResult;
-    fn interpret(&mut self, code: &str) -> InterpretResult;
+    fn interpret(&mut self) -> InterpretResult;
     fn push(&mut self, value: Value);
     fn pop(&mut self) -> &Value;
     fn peek(&mut self, distance: i32) -> &Value;
@@ -44,8 +44,9 @@ pub enum InterpretResult {
 
 const STACK_MAX: usize = 256;
 
+#[derive(Debug)]
 pub struct VirtualMachine<'a> {
-    chunk: Option<&'a Chunk>,
+    compiler: Compiler<'a>,
     ip: *const u8,
     stack: [Value; STACK_MAX],
     stack_top: i32,
@@ -54,14 +55,14 @@ pub struct VirtualMachine<'a> {
 }
 
 impl<'a> VM<'a> for VirtualMachine<'a> {
-    fn init_vm() -> Self {
+    fn init_vm(code: &'a str) -> Self {
         Self {
-            chunk: None,
             ip: std::ptr::null(),
             stack: core::array::from_fn(|_| Value::default()),
             stack_top: 0,
             objects: Box::new(Vec::new()),
             had_error: false,
+            compiler: Compiler::new(code, Chunk::new()),
         }
     }
 
@@ -74,24 +75,21 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
         let mut handle = stderr.lock();
         writeln!(handle, "{}", message).unwrap();
 
-        let instruction = unsafe {
-            self.ip
-                .offset_from(self.chunk.as_ref().unwrap().code.as_ptr()) as usize
-                - 1
-        };
-        let line = self.chunk.as_ref().unwrap().lines[instruction];
+        let instruction =
+            unsafe { self.ip.offset_from(self.compiler.chunk.code.as_ptr()) as usize - 1 };
+        let line = self.compiler.chunk.lines[instruction];
         writeln!(handle, "[line {}] in script", line).unwrap();
 
         self.reset_stack();
     }
 
     fn free_vm(&mut self) {
-        self.chunk = None;
         self.ip = std::ptr::null();
         self.stack = core::array::from_fn(|_| Value::default());
         self.stack_top = 0;
         self.objects = Box::new(Vec::new());
         self.had_error = false;
+        self.compiler.chunk.free();
     }
 
     unsafe fn read_byte(&mut self) -> u8 {
@@ -102,7 +100,7 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
 
     fn read_constant(&mut self) -> Value {
         let index = unsafe { self.read_byte() } as usize;
-        self.chunk.as_ref().unwrap().constants.values[index].clone()
+        self.compiler.chunk.constants.values[index].clone()
     }
 
     fn binary_op<F>(&mut self, op: F)
@@ -219,21 +217,15 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
         }
     }
 
-    fn interpret(&mut self, code: &str) -> InterpretResult {
-        let mut chunk = Chunk::new();
-        let mut compiler = Compiler::new(code, &mut chunk);
-        if !compiler.compile() {
-            chunk.free();
+    fn interpret(&mut self) -> InterpretResult {
+        if !self.compiler.compile() {
+            self.compiler.chunk.free();
             return InterpretResult::InterpretCompileError;
         }
-
-        self.chunk = Some(Box::leak(Box::new(chunk)));
-        self.ip = self.chunk.unwrap().code.as_ptr();
+        self.ip = self.compiler.chunk.code.as_ptr();
 
         let result = self.run();
-        unsafe {
-            Box::from_raw(self.chunk.unwrap() as *const Chunk as *mut Chunk).free();
-        }
+        self.compiler.chunk.free();
         self.reset_stack();
 
         result

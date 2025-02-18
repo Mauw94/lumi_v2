@@ -5,6 +5,7 @@ use std::{collections::HashMap, rc::Rc};
 use crate::debug::disassemble_instruction;
 use crate::{
     chunk::{Chunk, ChunkWrite, OpCode},
+    core::Table,
     object::{Obj, ObjString},
     scanner::{Scanner, Token, TokenType},
     utils::strtod_manual,
@@ -58,7 +59,8 @@ impl<'a> Parser<'a> {
 pub struct Compiler<'a> {
     parser: Parser<'a>,
     scanner: Scanner<'a>,
-    chunk: &'a mut Chunk,
+    pub chunk: Chunk,
+    pub strings: Table,
 }
 
 use std::ops::Add;
@@ -85,11 +87,12 @@ impl Add<u8> for Precedence {
 }
 
 impl<'a> Compiler<'a> {
-    pub fn new(code: &'a str, chunk: &'a mut Chunk) -> Self {
+    pub fn new(code: &'a str, chunk: Chunk) -> Self {
         Self {
             parser: Parser::default(),
             scanner: Scanner::init_scanner(code.as_bytes()),
             chunk,
+            strings: Table::init(),
         }
     }
 
@@ -218,6 +221,10 @@ impl<'a> Compiler<'a> {
         let bytes = &self.parser.previous.start[1..];
         let length = self.parser.previous.length - 2;
         let obj_str = ObjString::new(bytes, length);
+        self.strings.set(obj_str.clone(), Value::Nil);
+        // Strings will have Nil as value, since a string will only be a string. Later on we'll have methods, variables etc
+        // that are stored as a string obj for the key and a real Value::{} as the value.
+
         self.emit_constant(Value::Object(Box::new(Obj::String(Rc::new(obj_str)))));
     }
 

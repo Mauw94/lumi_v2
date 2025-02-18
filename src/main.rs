@@ -9,6 +9,7 @@ use vm::{VirtualMachine, VM};
 
 mod chunk;
 mod compiler;
+mod core;
 mod debug;
 mod lnum;
 mod object;
@@ -20,28 +21,25 @@ mod vm;
 fn main() {
     let mut sysinfo = System::new_all();
     sysinfo.refresh_all();
-    let mut vm = VirtualMachine::init_vm();
-
     let args: Vec<String> = env::args().collect();
     if args.len() <= 1 {
-        repl(&mut vm, &sysinfo);
+        repl(&sysinfo);
     } else {
         let filename = &args[1];
         let input_folder = Path::new("runnables");
         let file_path = input_folder.join(filename);
         match fs::read_to_string(&file_path) {
-            Ok(content) => run_code(&mut vm, &content),
+            Ok(content) => run_code(&content),
             Err(err) => eprintln!("Error reading file: {}", err),
         };
     }
-
-    vm.free_vm();
 }
 
-fn repl(vm: &mut VirtualMachine, _sysinfo: &System) {
+fn repl(_sysinfo: &System) {
     let mut input = String::new();
     while prompt(&mut input) {
-        benchmark!(vm.interpret(&input));
+        let mut vm = VirtualMachine::init_vm(&input);
+        benchmark!(vm.interpret());
 
         #[cfg(feature = "bench")]
         if let Some(proc) = _sysinfo.process(sysinfo::get_current_pid().unwrap()) {
@@ -49,12 +47,13 @@ fn repl(vm: &mut VirtualMachine, _sysinfo: &System) {
         } else {
             println!("Failed to get memory usage");
         }
+        vm.free_vm();
     }
-    vm.free_vm();
 }
 
-fn run_code(vm: &mut VirtualMachine, code: &str) {
-    benchmark!(vm.interpret(code));
+fn run_code(code: &str) {
+    let mut vm = VirtualMachine::init_vm(&code);
+    benchmark!(vm.interpret());
     vm.free_vm();
 }
 
