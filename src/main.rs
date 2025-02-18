@@ -1,6 +1,6 @@
 use std::{
     env, fs,
-    io::{stdin, stdout, Write},
+    io::{self, stdin, stdout, Write},
     path::Path,
 };
 

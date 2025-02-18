@@ -27,6 +27,10 @@ impl LNum {
         LNum::Int(LInt::Small(0))
     }
 
+    pub fn default_float() -> LNum {
+        LNum::Float(0.0)
+    }
+
     pub fn real_val(&self) -> f64 {
         match self {
             LNum::Byte(b) => *b as f64,
