@@ -13,6 +13,7 @@ use crate::{
     value::Value,
 };
 
+#[derive(Debug, PartialEq)]
 pub enum InterpretResult {
     InterpretOk(Value),
     InterpretCompileError,
