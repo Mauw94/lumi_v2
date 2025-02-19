@@ -13,39 +13,17 @@ use crate::{
     value::Value,
 };
 
-pub trait VM<'a> {
-    fn init_vm(code: &'a str) -> Self;
-    fn free_vm(&mut self);
-    unsafe fn read_byte(&mut self) -> u8;
-    fn read_constant(&mut self) -> Value;
-    fn binary_op<F>(&mut self, op: F)
-    where
-        F: FnOnce(f64, f64) -> f64;
-    fn binary_op_bool<F>(&mut self, op: F)
-    where
-        F: FnOnce(f64, f64) -> bool;
-    fn reset_stack(&mut self);
-    fn runtime_error(&mut self, message: &str) -> InterpretResult;
-    fn run(&mut self) -> InterpretResult;
-    fn interpret(&mut self) -> InterpretResult;
-    fn push(&mut self, value: Value);
-    fn pop(&mut self) -> &Value;
-    fn peek(&mut self, distance: i32) -> &Value;
-    fn is_falsey(&mut self, value: Value) -> bool;
-    fn concatenate(&mut self);
-    fn values_equal(&self, a: Value, b: Value) -> bool;
-}
-
 pub enum InterpretResult {
-    InterpretOk,
+    InterpretOk(Value),
     InterpretCompileError,
     InterpretRuntimeError,
 }
 
 const STACK_MAX: usize = 256;
 
+// Our virtual machine.
 #[derive(Debug)]
-pub struct VirtualMachine<'a> {
+pub struct VM<'a> {
     compiler: Compiler<'a>,
     ip: *const u8,
     stack: [Value; STACK_MAX],
@@ -54,8 +32,8 @@ pub struct VirtualMachine<'a> {
     had_error: bool,
 }
 
-impl<'a> VM<'a> for VirtualMachine<'a> {
-    fn init_vm(code: &'a str) -> Self {
+impl<'a> VM<'a> {
+    pub fn init_vm(code: &'a str) -> Self {
         Self {
             ip: std::ptr::null(),
             stack: core::array::from_fn(|_| Value::default()),
@@ -64,6 +42,29 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
             had_error: false,
             compiler: Compiler::new(code, Chunk::new()),
         }
+    }
+
+    pub fn interpret(&mut self) -> InterpretResult {
+        if !self.compiler.compile() {
+            self.compiler.chunk.free();
+            return InterpretResult::InterpretCompileError;
+        }
+        self.ip = self.compiler.chunk.code.as_ptr();
+
+        let result = self.run();
+        self.compiler.chunk.free();
+        self.reset_stack();
+
+        result
+    }
+
+    pub fn free_vm(&mut self) {
+        self.ip = std::ptr::null();
+        self.stack = core::array::from_fn(|_| Value::default());
+        self.stack_top = 0;
+        self.objects = Box::new(Vec::new());
+        self.had_error = false;
+        self.compiler.chunk.free();
     }
 
     fn reset_stack(&mut self) {
@@ -82,15 +83,6 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
 
         self.reset_stack();
         return InterpretResult::InterpretRuntimeError;
-    }
-
-    fn free_vm(&mut self) {
-        self.ip = std::ptr::null();
-        self.stack = core::array::from_fn(|_| Value::default());
-        self.stack_top = 0;
-        self.objects = Box::new(Vec::new());
-        self.had_error = false;
-        self.compiler.chunk.free();
     }
 
     unsafe fn read_byte(&mut self) -> u8 {
@@ -210,26 +202,12 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
                 Some(OpCode::Greater) => self.binary_op_bool(|a, b| a > b),
                 Some(OpCode::Less) => self.binary_op_bool(|a, b| a < b),
                 Some(OpCode::Return) => {
-                    println!("{}", self.pop());
-                    return InterpretResult::InterpretOk;
+                    let result = self.pop().clone();
+                    return InterpretResult::InterpretOk(result);
                 }
                 _ => return InterpretResult::InterpretRuntimeError,
             };
         }
-    }
-
-    fn interpret(&mut self) -> InterpretResult {
-        if !self.compiler.compile() {
-            self.compiler.chunk.free();
-            return InterpretResult::InterpretCompileError;
-        }
-        self.ip = self.compiler.chunk.code.as_ptr();
-
-        let result = self.run();
-        self.compiler.chunk.free();
-        self.reset_stack();
-
-        result
     }
 
     fn push(&mut self, value: Value) {
@@ -289,7 +267,7 @@ impl<'a> VM<'a> for VirtualMachine<'a> {
 }
 
 #[cfg(feature = "trace_exec")]
-fn trace_execution(vm: &VirtualMachine) {
+fn trace_execution(vm: &VM) {
     print!("    ");
     for slot in &vm.stack[0..vm.stack_top as usize] {
         print!("[ ");

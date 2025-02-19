@@ -5,7 +5,7 @@ use std::{
 };
 
 use sysinfo::System;
-use vm::{VirtualMachine, VM};
+use vm::VM;
 
 mod chunk;
 mod compiler;
@@ -38,8 +38,8 @@ fn main() {
 fn repl(_sysinfo: &System) {
     let mut input = String::new();
     while prompt(&mut input) {
-        let mut vm = VirtualMachine::init_vm(&input);
-        benchmark!(vm.interpret());
+        let mut vm = VM::init_vm(&input); // FIXME: cannot reset the VM for each repl
+        benchmark!(interpret(&mut vm));
 
         #[cfg(feature = "bench")]
         if let Some(proc) = _sysinfo.process(sysinfo::get_current_pid().unwrap()) {
@@ -52,8 +52,8 @@ fn repl(_sysinfo: &System) {
 }
 
 fn run_code(code: &str) {
-    let mut vm = VirtualMachine::init_vm(&code);
-    benchmark!(vm.interpret());
+    let mut vm = VM::init_vm(&code);
+    benchmark!(interpret(&mut vm));
     vm.free_vm();
 }
 
@@ -67,6 +67,20 @@ fn prompt(input: &mut String) -> bool {
     match stdin().read_line(input) {
         Ok(_) => true,
         Err(_) => false,
+    }
+}
+
+fn interpret(vm: &mut VM) {
+    let stderr = io::stderr();
+    let mut handle = stderr.lock();
+    match vm.interpret() {
+        vm::InterpretResult::InterpretOk(value) => writeln!(handle, "{}", value).unwrap(),
+        vm::InterpretResult::InterpretCompileError => {
+            writeln!(handle, "{}", "[COMPILE_ERROR]").unwrap()
+        }
+        vm::InterpretResult::InterpretRuntimeError => {
+            writeln!(handle, "{}", "[RUNTIME_ERROR]").unwrap()
+        }
     }
 }
 
