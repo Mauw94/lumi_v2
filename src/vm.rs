@@ -7,10 +7,7 @@ use crate::debug::disassemble_instruction;
 use crate::lnum::LNum;
 use crate::object::{Obj, ObjString};
 
-use crate::{
-    chunk::{Chunk, OpCode},
-    value::Value,
-};
+use crate::{chunk::OpCode, value::Value};
 
 #[derive(Debug, PartialEq)]
 pub enum InterpretResult {
@@ -33,19 +30,19 @@ pub struct VM<'a> {
 }
 
 impl<'a> VM<'a> {
-    pub fn init_vm(code: &'a str) -> Self {
+    pub fn init_vm() -> Self {
         Self {
             ip: std::ptr::null(),
             stack: core::array::from_fn(|_| Value::default()),
             stack_top: 0,
             objects: Box::new(Vec::new()),
             had_error: false,
-            compiler: Compiler::new(code, Chunk::new()),
+            compiler: Compiler::new(),
         }
     }
 
-    pub fn interpret(&mut self) -> InterpretResult {
-        if !self.compiler.compile() {
+    pub fn interpret(&mut self, code: &'a str) -> InterpretResult {
+        if !self.compiler.compile(code) {
             self.compiler.chunk.free();
             return InterpretResult::InterpretCompileError;
         }
@@ -211,10 +208,10 @@ impl<'a> VM<'a> {
                     self.pop();
                 }
                 Some(OpCode::DefineGlobal) => {
-                    let constant = self.read_constant();
-                    if let Some(key) = constant.as_string_obj().clone() {
-                        self.compiler.globals.set(key.hash, constant);
-                        self.pop();
+                    let var_name = self.read_constant();
+                    if let Some(key) = var_name.as_string_obj().clone() {
+                        let var_val = self.pop().clone();
+                        self.compiler.globals.set(key.hash, var_val);
                     } else {
                         return self.runtime_error("Constant is not a string.");
                     }

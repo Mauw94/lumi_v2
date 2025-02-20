@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::{
     lnum::LNum,
     object::{Obj, ObjString, ObjType},

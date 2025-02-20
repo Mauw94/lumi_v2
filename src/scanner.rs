@@ -122,6 +122,14 @@ impl fmt::Display for TokenType {
 }
 
 impl<'a> Scanner<'a> {
+    pub fn new_empty() -> Self {
+        Self {
+            start: &[],
+            current: &[],
+            line: 0,
+        }
+    }
+
     pub fn init_scanner(source: &'a [u8]) -> Self {
         Self {
             start: source,

@@ -1,5 +1,5 @@
 use core::str;
-use std::{collections::HashMap, rc::Rc};
+use std::collections::HashMap;
 
 #[cfg(feature = "trace_exec")]
 use crate::debug::disassemble_instruction;
@@ -88,17 +88,19 @@ impl Add<u8> for Precedence {
 }
 
 impl<'a> Compiler<'a> {
-    pub fn new(code: &'a str, chunk: Chunk) -> Self {
+    pub fn new() -> Self {
         Self {
             parser: Parser::default(),
-            scanner: Scanner::init_scanner(code.as_bytes()),
-            chunk,
+            scanner: Scanner::new_empty(),
+            chunk: Chunk::new(),
             strings: Table::init(),
             globals: Table::init(),
         }
     }
 
-    pub fn compile(&mut self) -> bool {
+    pub fn compile(&mut self, code: &'a str) -> bool {
+        self.scanner = Scanner::init_scanner(code.as_bytes());
+
         loop {
             self.advance();
 

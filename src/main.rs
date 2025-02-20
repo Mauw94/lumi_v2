@@ -1,6 +1,6 @@
 use std::{
     env, fs,
-    io::{self, stdin, stdout, Write},
+    io::{stdin, stdout, Write},
     path::Path,
 };
 
@@ -22,8 +22,9 @@ fn main() {
     let mut sysinfo = System::new_all();
     sysinfo.refresh_all();
     let args: Vec<String> = env::args().collect();
+    let mut vm = VM::init_vm();
     if args.len() <= 1 {
-        repl(&sysinfo);
+        repl(&mut vm, &sysinfo);
     } else {
         let filename = &args[1];
         let input_folder = Path::new("runnables");
@@ -35,11 +36,11 @@ fn main() {
     }
 }
 
-fn repl(_sysinfo: &System) {
+fn repl(vm: &mut VM, _sysinfo: &System) {
     let mut input = String::new();
     while prompt(&mut input) {
-        let mut vm = VM::init_vm(&input); // FIXME: cannot reset the VM for each repl
-        benchmark!(interpret(&mut vm));
+        let input_ref: &'static str = Box::leak(input.clone().into_boxed_str());
+        benchmark!(vm.interpret(input_ref.trim_end()));
 
         #[cfg(feature = "bench")]
         if let Some(proc) = _sysinfo.process(sysinfo::get_current_pid().unwrap()) {
@@ -51,8 +52,8 @@ fn repl(_sysinfo: &System) {
 }
 
 fn run_code(code: &str) {
-    let mut vm = VM::init_vm(&code);
-    benchmark!(interpret(&mut vm));
+    let mut vm = VM::init_vm();
+    benchmark!(vm.interpret(code));
     vm.free_vm();
 }
 
@@ -66,20 +67,6 @@ fn prompt(input: &mut String) -> bool {
     match stdin().read_line(input) {
         Ok(_) => true,
         Err(_) => false,
-    }
-}
-
-fn interpret(vm: &mut VM) {
-    let stderr = io::stderr();
-    let mut handle = stderr.lock();
-    match vm.interpret() {
-        vm::InterpretResult::InterpretOk => writeln!(handle, "{}", "").unwrap(),
-        vm::InterpretResult::InterpretCompileError => {
-            writeln!(handle, "{}", "[COMPILE_ERROR]").unwrap()
-        }
-        vm::InterpretResult::InterpretRuntimeError => {
-            writeln!(handle, "{}", "[RUNTIME_ERROR]").unwrap()
-        }
     }
 }
 
