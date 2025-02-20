@@ -49,6 +49,7 @@ fn repl(vm: &mut VM, _sysinfo: &System) {
             println!("Failed to get memory usage");
         }
     }
+    vm.free_vm();
 }
 
 fn run_code(code: &str) {

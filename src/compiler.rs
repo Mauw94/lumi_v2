@@ -62,6 +62,7 @@ pub struct Compiler<'a> {
     pub chunk: Chunk,
     pub strings: Table,
     pub globals: Table,
+    can_assign: bool,
 }
 
 use std::ops::Add;
@@ -95,6 +96,7 @@ impl<'a> Compiler<'a> {
             chunk: Chunk::new(),
             strings: Table::init(),
             globals: Table::init(),
+            can_assign: false,
         }
     }
 
@@ -251,7 +253,13 @@ impl<'a> Compiler<'a> {
 
     fn named_variable(&mut self, name: &Token) {
         let arg = self.identifier_constant(name);
-        self.emit_bytes(OpCode::GetGlobal as u8, arg);
+
+        if self.can_assign && self.matches(TokenType::Equal) {
+            self.expression();
+            self.emit_bytes(OpCode::SetGlobal as u8, arg);
+        } else {
+            self.emit_bytes(OpCode::GetGlobal as u8, arg);
+        }
     }
 
     fn variable(&mut self) {
@@ -280,6 +288,7 @@ impl<'a> Compiler<'a> {
             .get_rule(self.parser.previous.token_type.clone())
             .prefix
         {
+            self.can_assign = precedence <= Precedence::Assignment;
             prefix(self);
 
             while precedence
@@ -290,6 +299,10 @@ impl<'a> Compiler<'a> {
                 self.advance();
                 if let Some(infix) = self.get_rule(self.parser.previous.token_type.clone()).infix {
                     infix(self);
+                }
+
+                if self.can_assign && self.matches(TokenType::Equal) {
+                    self.error("Invalid assignment target.".as_bytes());
                 }
             }
         } else {

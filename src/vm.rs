@@ -62,6 +62,8 @@ impl<'a> VM<'a> {
         self.objects = Box::new(Vec::new());
         self.had_error = false;
         self.compiler.chunk.free();
+        self.compiler.globals.free();
+        self.compiler.strings.free();
     }
 
     fn reset_stack(&mut self) {
@@ -220,8 +222,8 @@ impl<'a> VM<'a> {
                     }
                 }
                 Some(OpCode::GetGlobal) => {
-                    let constant = self.read_constant();
-                    if let Some(key) = constant.as_string_obj().clone() {
+                    let var_name = self.read_constant();
+                    if let Some(key) = var_name.as_string_obj().clone() {
                         if let Some(value) = self.compiler.globals.get(key.hash) {
                             self.push(value.clone());
                         } else {
@@ -231,6 +233,20 @@ impl<'a> VM<'a> {
                         }
                     } else {
                         return self.runtime_error("Constant is not a string.");
+                    }
+                }
+                Some(OpCode::SetGlobal) => {
+                    let var_name = self.read_constant();
+
+                    if let Some(key) = var_name.as_string_obj().clone() {
+                        let var_val = self.peek(0).clone();
+                        if self.compiler.globals.set(key.hash, var_val) {
+                            self.compiler.globals.delete(key.hash);
+                            self.runtime_error(
+                                format!("Undefined variable {}.", key.as_str()).as_str(),
+                            );
+                            return InterpretResult::InterpretRuntimeError;
+                        }
                     }
                 }
                 _ => return InterpretResult::InterpretRuntimeError,
