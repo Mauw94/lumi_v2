@@ -210,8 +210,11 @@ impl<'a> VM<'a> {
                 Some(OpCode::DefineGlobal) => {
                     let var_name = self.read_constant();
                     if let Some(key) = var_name.as_string_obj().clone() {
-                        let var_val = self.pop().clone();
+                        let var_val = self.peek(0).clone();
                         self.compiler.globals.set(key.hash, var_val);
+                        self.pop();
+                        // We pop after the value has been added to the hashtable. That ensures the VM can still find the variable if a garbage colleciton
+                        // is triggered right in the middle of adding it to the hash table.
                     } else {
                         return self.runtime_error("Constant is not a string.");
                     }
