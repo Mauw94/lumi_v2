@@ -92,7 +92,7 @@ impl Value {
         self.is_object() && self.obj_type().unwrap() == object_type
     }
 
-    pub fn as_string_obj(&self) -> Option<&Rc<ObjString>> {
+    pub fn as_string_obj(&self) -> Option<&ObjString> {
         match self {
             Value::Object(obj) => match &**obj {
                 Obj::String(obj_string) => Some(obj_string),

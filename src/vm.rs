@@ -15,7 +15,7 @@ use crate::{
 
 #[derive(Debug, PartialEq)]
 pub enum InterpretResult {
-    InterpretOk(Value),
+    InterpretOk,
     InterpretCompileError,
     InterpretRuntimeError,
 }
@@ -203,8 +203,20 @@ impl<'a> VM<'a> {
                 Some(OpCode::Greater) => self.binary_op_bool(|a, b| a > b),
                 Some(OpCode::Less) => self.binary_op_bool(|a, b| a < b),
                 Some(OpCode::Return) => {
-                    let result = self.pop().clone();
-                    return InterpretResult::InterpretOk(result);
+                    return InterpretResult::InterpretOk;
+                }
+                Some(OpCode::Print) => {
+                    println!("{}", self.pop());
+                }
+                Some(OpCode::Pop) => {
+                    self.pop();
+                }
+                Some(OpCode::DefineGlobal) => {
+                    let constant = self.read_constant();
+                    let key = constant.as_string_obj().unwrap().clone();
+                    self.compiler.globals.set(key, constant);
+                    self.pop();
+                    println!("{:?}", self.compiler.globals);
                 }
                 _ => return InterpretResult::InterpretRuntimeError,
             };
@@ -245,10 +257,10 @@ impl<'a> VM<'a> {
         let a_str = a.as_string_obj().unwrap().clone();
 
         let new_val = a_str.to_string() + &b_str.to_string();
-        let value = Value::Object(Box::new(Obj::String(Rc::new(ObjString::new(
+        let value = Value::Object(Box::new(Obj::String(ObjString::new(
             new_val.as_bytes(),
             new_val.as_bytes().len(),
-        )))));
+        ))));
         self.push(value);
     }
 
@@ -277,7 +289,7 @@ fn trace_execution(vm: &VM) {
     }
     println!();
     disassemble_instruction(
-        vm.chunk.as_ref().unwrap(),
-        vm.ip as usize - vm.chunk.unwrap().code.as_ptr() as usize,
+        &vm.compiler.chunk,
+        vm.ip as usize - vm.compiler.chunk.code.as_ptr() as usize,
     );
 }

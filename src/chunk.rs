@@ -16,6 +16,9 @@ pub enum OpCode {
     Not,
     Negate,
     Return,
+    Print,
+    Pop,
+    DefineGlobal,
 }
 
 impl OpCode {
@@ -35,6 +38,9 @@ impl OpCode {
             11 => Some(OpCode::Not),
             12 => Some(OpCode::Negate),
             13 => Some(OpCode::Return),
+            14 => Some(OpCode::Print),
+            15 => Some(OpCode::Pop),
+            16 => Some(OpCode::DefineGlobal),
             _ => None,
         }
     }

@@ -9,7 +9,7 @@ pub enum ObjType {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Obj {
-    String(Rc<ObjString>),
+    String(ObjString),
 }
 
 #[derive(Debug, Clone, PartialEq)]

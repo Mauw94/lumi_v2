@@ -61,6 +61,7 @@ pub struct Compiler<'a> {
     scanner: Scanner<'a>,
     pub chunk: Chunk,
     pub strings: Table,
+    pub globals: Table,
 }
 
 use std::ops::Add;
@@ -93,14 +94,19 @@ impl<'a> Compiler<'a> {
             scanner: Scanner::init_scanner(code.as_bytes()),
             chunk,
             strings: Table::init(),
+            globals: Table::init(),
         }
     }
 
     pub fn compile(&mut self) -> bool {
         loop {
             self.advance();
-            self.expression();
-            self.consume(TokenType::Eof, "Expect end of epxression.".as_bytes());
+
+            while !self.matches(TokenType::Eof) {
+                self.declaration();
+            }
+            // self.expression();
+            // self.consume(TokenType::Eof, "Expect end of epxression.".as_bytes());
             self.end_compiler();
 
             return !self.parser.had_error;
@@ -117,7 +123,7 @@ impl<'a> Compiler<'a> {
 
         loop {
             let token = self.scanner.scan_token();
-            // println!("TOKEN: {:?}", token);
+            // println!("{:?}", token);
             self.parser.current = token.clone();
             if self.parser.current.token_type != TokenType::Error {
                 break;
@@ -129,15 +135,28 @@ impl<'a> Compiler<'a> {
     }
 
     fn consume(&mut self, token_type: TokenType, message: &[u8]) {
-        if self.parser.current.token_type == TokenType::Eof {
-            return;
-        }
+        // FIXME: can be removed?
+        // if self.parser.current.token_type == TokenType::Eof {
+        //     return;
+        // }
         if self.parser.current.token_type == token_type {
             self.advance();
             return;
         }
 
         self.error_at_current(message);
+    }
+
+    fn check(&self, token_type: TokenType) -> bool {
+        self.parser.current.token_type == token_type
+    }
+
+    fn matches(&mut self, token_type: TokenType) -> bool {
+        if !self.check(token_type) {
+            return false;
+        }
+        self.advance();
+        return true;
     }
 
     fn emit_byte(&mut self, byte: u8) {
@@ -225,7 +244,7 @@ impl<'a> Compiler<'a> {
         // Strings will have Nil as value, since a string will only be a string. Later on we'll have methods, variables etc
         // that are stored as a string obj for the key and a real Value::{} as the value.
 
-        self.emit_constant(Value::Object(Box::new(Obj::String(Rc::new(obj_str)))));
+        self.emit_constant(Value::Object(Box::new(Obj::String(obj_str))));
     }
 
     fn unary(&mut self) {
@@ -266,6 +285,25 @@ impl<'a> Compiler<'a> {
         }
     }
 
+    fn identifier_constant(&mut self, name: &Token) -> u8 {
+        self.make_constant(Value::Object(Box::new(Obj::String(ObjString::new(
+            name.start,
+            name.length,
+        )))))
+    }
+
+    fn parse_variable(&mut self, error_message: &[u8]) -> u8 {
+        self.consume(TokenType::Identifier, error_message);
+        // Cloning here doesn't matter since we just take the tokens bytes and length that we take from the byte array.
+        // We do not modify self.parser.previous.
+        let previous = self.parser.previous.clone();
+        self.identifier_constant(&previous)
+    }
+
+    fn define_variable(&mut self, global: u8) {
+        self.emit_bytes(OpCode::DefineGlobal as u8, global);
+    }
+
     fn get_rule(&mut self, token_type: TokenType) -> ParseRule<'a> {
         let rules = self.rules();
         *rules.get(&token_type).unwrap()
@@ -273,6 +311,83 @@ impl<'a> Compiler<'a> {
 
     fn expression(&mut self) {
         self.parse_precedence(Precedence::Assignment);
+    }
+
+    fn var_declaration(&mut self) {
+        println!("in var declaration.");
+        let global: u8 = self.parse_variable("Expect variable name.".as_bytes());
+
+        if self.matches(TokenType::Equal) {
+            self.expression();
+        } else {
+            self.emit_byte(OpCode::Nil as u8);
+        }
+
+        self.consume(
+            TokenType::Semicolon,
+            "Expect ';' after variable declaration.".as_bytes(),
+        );
+
+        self.define_variable(global);
+    }
+
+    fn expression_statement(&mut self) {
+        self.expression();
+        self.consume(
+            TokenType::Semicolon,
+            "Expect ';' after expression.".as_bytes(),
+        );
+        self.emit_byte(OpCode::Pop as u8);
+    }
+
+    fn print_statement(&mut self) {
+        self.expression();
+        self.consume(TokenType::Semicolon, "Expect ';' after value.".as_bytes());
+        self.emit_byte(OpCode::Print as u8);
+    }
+
+    fn synchronize(&mut self) {
+        self.parser.panic_mode = false;
+
+        while self.parser.current.token_type != TokenType::Eof {
+            if self.parser.previous.token_type == TokenType::Semicolon {
+                return;
+            }
+            match self.parser.current.token_type {
+                TokenType::Class => {}
+                TokenType::Fun => {}
+                TokenType::Var => {}
+                TokenType::For => {}
+                TokenType::If => {}
+                TokenType::While => {}
+                TokenType::Print => {}
+                TokenType::Return => {}
+
+                _ => return,
+            }
+
+            self.advance();
+        }
+    }
+
+    fn declaration(&mut self) {
+        if self.matches(TokenType::Var) {
+            self.var_declaration();
+        } else {
+            self.statement();
+        }
+
+        if self.parser.panic_mode {
+            self.synchronize();
+        }
+    }
+
+    fn statement(&mut self) {
+        if self.matches(TokenType::Print) {
+            self.print_statement();
+        } else {
+            self.expression_statement();
+        }
     }
 
     fn error_at_current(&mut self, message: &[u8]) {

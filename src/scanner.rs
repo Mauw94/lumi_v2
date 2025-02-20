@@ -233,7 +233,11 @@ impl<'a> Scanner<'a> {
     }
 
     fn peek(&mut self) -> char {
-        self.current[0] as char
+        if self.current.len() > 0 {
+            self.current[0] as char
+        } else {
+            return '\0';
+        }
     }
 
     fn peek_next(&mut self) -> char {
@@ -337,8 +341,7 @@ impl<'a> Scanner<'a> {
         if keywords.contains_key(keyword) {
             keywords.get(keyword).unwrap().clone()
         } else {
-            eprintln!("Keyword not found. {}", keyword);
-            return TokenType::Error;
+            return TokenType::Identifier;
         }
     }
 }
