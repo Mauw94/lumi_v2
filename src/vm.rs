@@ -1,5 +1,4 @@
 use std::io::{self, Write};
-use std::rc::Rc;
 
 use crate::chunk::ChunkWrite;
 use crate::compiler::Compiler;
@@ -213,10 +212,26 @@ impl<'a> VM<'a> {
                 }
                 Some(OpCode::DefineGlobal) => {
                     let constant = self.read_constant();
-                    let key = constant.as_string_obj().unwrap().clone();
-                    self.compiler.globals.set(key, constant);
-                    self.pop();
-                    println!("{:?}", self.compiler.globals);
+                    if let Some(key) = constant.as_string_obj().clone() {
+                        self.compiler.globals.set(key.hash, constant);
+                        self.pop();
+                    } else {
+                        return self.runtime_error("Constant is not a string.");
+                    }
+                }
+                Some(OpCode::GetGlobal) => {
+                    let constant = self.read_constant();
+                    if let Some(key) = constant.as_string_obj().clone() {
+                        if let Some(value) = self.compiler.globals.get(key.hash) {
+                            self.push(value.clone());
+                        } else {
+                            return self.runtime_error(
+                                format!("Undefined variable {}.", key.as_str()).as_str(),
+                            );
+                        }
+                    } else {
+                        return self.runtime_error("Constant is not a string.");
+                    }
                 }
                 _ => return InterpretResult::InterpretRuntimeError,
             };

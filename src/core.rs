@@ -1,4 +1,4 @@
-use crate::{object::ObjString, value::Value};
+use crate::value::Value;
 
 // TODO: we add a max capacity here?
 // if (table->count + 1 > table->capacity * TABLE_MAX_LOAD) {
@@ -13,7 +13,7 @@ pub struct Table {
 
 #[derive(Debug, Clone)]
 pub struct Entry {
-    key: ObjString,
+    key: u32,
     value: Value,
 }
 
@@ -30,9 +30,9 @@ impl Table {
         self.entries = Vec::new();
     }
 
-    pub fn set(&mut self, key: ObjString, value: Value) -> bool {
+    pub fn set(&mut self, key: u32, value: Value) -> bool {
         // println!("setting string: {:?}, {:?}", key, value);
-        let entry = self.find_entry(&key);
+        let entry = self.find_entry(key);
         let is_new_key = entry.is_none();
         if is_new_key {
             self.count += 1;
@@ -49,7 +49,7 @@ impl Table {
         is_new_key
     }
 
-    pub fn get(&self, key: &ObjString) -> Option<&Value> {
+    pub fn get(&self, key: u32) -> Option<&Value> {
         if self.count == 0 {
             return None;
         }
@@ -62,21 +62,21 @@ impl Table {
         None
     }
 
-    pub fn delete(&mut self, key: &ObjString) -> bool {
+    pub fn delete(&mut self, key: u32) -> bool {
         if self.count == 0 {
             return false;
         }
 
         let entry = self.find_entry(key);
         if entry.is_some() {
-            let index = self.entries.iter().position(|e| e.key == *key).unwrap();
+            let index = self.entries.iter().position(|e| e.key == key).unwrap();
             self.entries.remove(index);
         }
 
         false
     }
 
-    fn find_entry(&self, key: &ObjString) -> Option<&Entry> {
-        self.entries.iter().find(|e| e.key == *key)
+    fn find_entry(&self, key: u32) -> Option<&Entry> {
+        self.entries.iter().find(|e| e.key == key)
     }
 }

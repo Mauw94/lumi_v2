@@ -47,7 +47,6 @@ fn repl(_sysinfo: &System) {
         } else {
             println!("Failed to get memory usage");
         }
-        vm.free_vm();
     }
 }
 

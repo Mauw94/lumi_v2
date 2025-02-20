@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::utils::hash_str;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -16,7 +14,7 @@ pub enum Obj {
 pub struct ObjString {
     length: usize,
     chars: Vec<u8>,
-    hash: u32,
+    pub hash: u32,
 }
 
 impl ObjString {

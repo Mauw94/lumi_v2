@@ -19,6 +19,7 @@ pub enum OpCode {
     Print,
     Pop,
     DefineGlobal,
+    GetGlobal,
 }
 
 impl OpCode {
@@ -41,6 +42,7 @@ impl OpCode {
             14 => Some(OpCode::Print),
             15 => Some(OpCode::Pop),
             16 => Some(OpCode::DefineGlobal),
+            17 => Some(OpCode::GetGlobal),
             _ => None,
         }
     }

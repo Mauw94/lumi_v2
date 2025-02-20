@@ -240,11 +240,21 @@ impl<'a> Compiler<'a> {
         let bytes = &self.parser.previous.start[1..];
         let length = self.parser.previous.length - 2;
         let obj_str = ObjString::new(bytes, length);
-        self.strings.set(obj_str.clone(), Value::Nil);
+        self.strings.set(obj_str.hash, Value::Nil);
         // Strings will have Nil as value, since a string will only be a string. Later on we'll have methods, variables etc
         // that are stored as a string obj for the key and a real Value::{} as the value.
 
         self.emit_constant(Value::Object(Box::new(Obj::String(obj_str))));
+    }
+
+    fn named_variable(&mut self, name: &Token) {
+        let arg = self.identifier_constant(name);
+        self.emit_bytes(OpCode::GetGlobal as u8, arg);
+    }
+
+    fn variable(&mut self) {
+        let previous = self.parser.previous.clone();
+        self.named_variable(&previous);
     }
 
     fn unary(&mut self) {
@@ -314,7 +324,6 @@ impl<'a> Compiler<'a> {
     }
 
     fn var_declaration(&mut self) {
-        println!("in var declaration.");
         let global: u8 = self.parse_variable("Expect variable name.".as_bytes());
 
         if self.matches(TokenType::Equal) {
@@ -585,7 +594,7 @@ impl<'a> Compiler<'a> {
         rules.insert(
             TokenType::Identifier,
             ParseRule {
-                prefix: None,
+                prefix: Some(Self::variable),
                 infix: None,
                 precedence: Precedence::None,
             },
