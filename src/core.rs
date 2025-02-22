@@ -1,10 +1,5 @@
 use crate::value::Value;
 
-// TODO: we add a max capacity here?
-// if (table->count + 1 > table->capacity * TABLE_MAX_LOAD) {
-//     int capacity = GROW_CAPACITY(table->capacity);
-//     adjustCapacity(table, capacity);
-// }
 #[derive(Debug, Clone)]
 pub struct Table {
     count: usize,

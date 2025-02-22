@@ -5,7 +5,7 @@ use crate::{
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
-    Number(LNum), // TODO: implement like lumi_v1
+    Number(LNum),
     Bool(bool),
     Object(Box<Obj>),
     Nil,
