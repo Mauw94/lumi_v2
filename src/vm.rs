@@ -249,6 +249,14 @@ impl<'a> VM<'a> {
                         }
                     }
                 }
+                Some(OpCode::SetLocal) => {
+                    let slot = unsafe { self.read_byte() } as usize;
+                    self.stack[slot as usize] = self.peek(0).clone();
+                }
+                Some(OpCode::GetLocal) => {
+                    let slot = unsafe { self.read_byte() } as usize;
+                    self.push(self.stack[slot].clone());
+                }
                 _ => return InterpretResult::InterpretRuntimeError,
             };
         }

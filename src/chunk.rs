@@ -21,6 +21,8 @@ pub enum OpCode {
     DefineGlobal,
     GetGlobal,
     SetGlobal,
+    GetLocal,
+    SetLocal,
 }
 
 impl OpCode {
@@ -45,6 +47,8 @@ impl OpCode {
             16 => Some(OpCode::DefineGlobal),
             17 => Some(OpCode::GetGlobal),
             18 => Some(OpCode::SetGlobal),
+            19 => Some(OpCode::GetLocal),
+            20 => Some(OpCode::SetLocal),
             _ => None,
         }
     }
