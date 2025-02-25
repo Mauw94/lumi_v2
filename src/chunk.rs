@@ -66,7 +66,7 @@ pub struct Chunk {
 pub trait ChunkWrite {
     fn new() -> Self;
     fn write_chunk(&mut self, byte: u8, line: i32);
-    fn add_constants(&mut self, value: Value) -> usize;
+    fn add_constants(&mut self, value: Value, is_final: bool) -> usize;
     fn free(&mut self);
     fn grow_capacity(&self, capacity: usize) -> usize;
 }
@@ -94,8 +94,8 @@ impl ChunkWrite for Chunk {
         self.count += 1;
     }
 
-    fn add_constants(&mut self, value: Value) -> usize {
-        self.constants.write_value(value);
+    fn add_constants(&mut self, value: Value, is_final: bool) -> usize {
+        self.constants.write_value(value, is_final);
         self.constants.len() - 1
     }
 

@@ -66,7 +66,8 @@ pub enum TokenType {
     Super,
     This,
     True,
-    Var,
+    Let,
+    Final,
     While,
     Error,
     Eof,
@@ -113,7 +114,8 @@ impl fmt::Display for TokenType {
             TokenType::Super => write!(f, "Super"),
             TokenType::This => write!(f, "This"),
             TokenType::True => write!(f, "True"),
-            TokenType::Var => write!(f, "Var"),
+            TokenType::Let => write!(f, "Let"),
+            TokenType::Final => write!(f, "Final"),
             TokenType::While => write!(f, "While"),
             TokenType::Error => write!(f, "Error()"),
             TokenType::Eof => write!(f, "EOF"),
@@ -340,7 +342,8 @@ impl<'a> Scanner<'a> {
         keywords.insert("print", TokenType::Print);
         keywords.insert("return", TokenType::Return);
         keywords.insert("while", TokenType::While);
-        keywords.insert("var", TokenType::Var);
+        keywords.insert("let", TokenType::Let);
+        keywords.insert("final", TokenType::Final);
         keywords.insert("class", TokenType::Class);
         keywords.insert("super", TokenType::Super);
         keywords.insert("for", TokenType::For);

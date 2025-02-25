@@ -53,7 +53,7 @@ fn constant_instruction(name: &str, chunk: &Chunk, offset: usize) -> usize {
     let constant_index = chunk.code[offset + 1] as usize;
     print!("{:<16} {:4} '", name, constant_index);
     if let Some(value) = chunk.constants.values.get(constant_index) {
-        print!("{}", value);
+        print!("{}", value.value);
     }
     println!("'");
     2

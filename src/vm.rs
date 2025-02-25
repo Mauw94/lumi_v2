@@ -7,6 +7,7 @@ use crate::debug::disassemble_instruction;
 use crate::lnum::LNum;
 use crate::object::{Obj, ObjString};
 
+use crate::value::FinalValue;
 use crate::{chunk::OpCode, value::Value};
 
 #[derive(Debug, PartialEq)]
@@ -23,7 +24,7 @@ const STACK_MAX: usize = 256;
 pub struct VM<'a> {
     compiler: Compiler<'a>,
     ip: *const u8,
-    stack: [Value; STACK_MAX],
+    stack: [FinalValue; STACK_MAX],
     stack_top: i32,
     objects: Box<Vec<&'a Obj>>,
     had_error: bool,
@@ -33,7 +34,7 @@ impl<'a> VM<'a> {
     pub fn init_vm() -> Self {
         Self {
             ip: std::ptr::null(),
-            stack: core::array::from_fn(|_| Value::default()),
+            stack: core::array::from_fn(|_| FinalValue::default()),
             stack_top: 0,
             objects: Box::new(Vec::new()),
             had_error: false,
@@ -57,7 +58,7 @@ impl<'a> VM<'a> {
 
     pub fn free_vm(&mut self) {
         self.ip = std::ptr::null();
-        self.stack = core::array::from_fn(|_| Value::default());
+        self.stack = core::array::from_fn(|_| FinalValue::default());
         self.stack_top = 0;
         self.objects = Box::new(Vec::new());
         self.had_error = false;
@@ -90,7 +91,7 @@ impl<'a> VM<'a> {
         b
     }
 
-    fn read_constant(&mut self) -> Value {
+    fn read_constant(&mut self) -> FinalValue {
         let index = unsafe { self.read_byte() } as usize;
         self.compiler.chunk.constants.values[index].clone()
     }
@@ -99,17 +100,19 @@ impl<'a> VM<'a> {
     where
         F: FnOnce(f64, f64) -> f64,
     {
-        if !self.peek(0).is_number() || !self.peek(1).is_number() {
+        if !self.peek(0).value.is_number() || !self.peek(1).value.is_number() {
             self.runtime_error("Operands must be numbers.");
             self.had_error = true;
             return;
         }
-        let b = self.pop().clone();
-        let a = self.pop().clone();
+        let b = self.pop().value.clone();
+        let a = self.pop().value.clone();
         if let (Value::Number(b), Value::Number(a)) = (b, a) {
             let b_val = b.real_val();
             let a_val = a.real_val();
-            self.push(Value::Number(LNum::new(op(a_val, b_val))));
+            self.push(FinalValue::default_new(Value::Number(LNum::new(op(
+                a_val, b_val,
+            )))));
         }
     }
 
@@ -117,17 +120,17 @@ impl<'a> VM<'a> {
     where
         F: FnOnce(f64, f64) -> bool,
     {
-        if !self.peek(0).is_number() || !self.peek(1).is_number() {
+        if !self.peek(0).value.is_number() || !self.peek(1).value.is_number() {
             self.runtime_error("Operands must be numbers.");
             self.had_error = true;
             return;
         }
-        let b = self.pop().clone();
-        let a = self.pop().clone();
+        let b = self.pop().value.clone();
+        let a = self.pop().value.clone();
         if let (Value::Number(b), Value::Number(a)) = (b, a) {
             let b_val = b.real_val();
             let a_val = a.real_val();
-            self.push(Value::Bool(op(a_val, b_val)));
+            self.push(FinalValue::default_new(Value::Bool(op(a_val, b_val))));
         }
     }
 
@@ -144,33 +147,36 @@ impl<'a> VM<'a> {
             let instruction = unsafe { self.read_byte() };
             match OpCode::from_u8(instruction) {
                 Some(OpCode::Constant) => {
-                    let constant = self.read_constant();
+                    let fin_val = self.read_constant();
+                    let constant = fin_val.value;
                     if constant.is_object() {
                         let obj = constant.as_object().unwrap();
                         self.objects.push(Box::leak(Box::new(obj.clone())));
                     }
-                    self.push(constant);
+                    self.push(FinalValue::new(constant, fin_val.is_final));
                 }
                 Some(OpCode::Negate) => {
-                    if !self.peek(0).is_number() {
+                    if !self.peek(0).value.is_number() {
                         return self.runtime_error("Operand must be a number.");
                     }
                     let value = self.pop().clone();
-                    match value.negate() {
-                        Ok(negated_value) => self.push(negated_value),
+                    match value.value.negate() {
+                        Ok(negated_value) => self.push(FinalValue::default_new(negated_value)),
                         Err(err) => panic!("{}", err),
                     }
                 }
                 Some(OpCode::Add) => {
-                    if self.peek(0).is_string() && self.peek(1).is_string() {
+                    if self.peek(0).value.is_string() && self.peek(1).value.is_string() {
                         self.concatenate();
-                    } else if self.peek(0).is_number() && self.peek(1).is_number() {
-                        let b = self.pop().clone();
-                        let a = self.pop().clone();
+                    } else if self.peek(0).value.is_number() && self.peek(1).value.is_number() {
+                        let b = self.pop().value.clone();
+                        let a = self.pop().value.clone();
                         if let (Value::Number(b), Value::Number(a)) = (b, a) {
                             let b_val = b.real_val();
                             let a_val = a.real_val();
-                            self.push(Value::Number(LNum::new(a_val + b_val)));
+                            self.push(FinalValue::default_new(Value::Number(LNum::new(
+                                a_val + b_val,
+                            ))));
                         }
                     } else {
                         return self.runtime_error("Operands must be two numbers or two strings.");
@@ -187,16 +193,18 @@ impl<'a> VM<'a> {
                 }
                 Some(OpCode::Not) => {
                     let value = self.pop().clone();
-                    let is_falsey = self.is_falsey(value);
-                    self.push(Value::Bool(is_falsey));
+                    let is_falsey = self.is_falsey(value.value);
+                    self.push(FinalValue::default_new(Value::Bool(is_falsey)));
                 }
-                Some(OpCode::Nil) => self.push(Value::Nil),
-                Some(OpCode::True) => self.push(Value::Bool(true)),
-                Some(OpCode::False) => self.push(Value::Bool(false)),
+                Some(OpCode::Nil) => self.push(FinalValue::default_new(Value::Nil)),
+                Some(OpCode::True) => self.push(FinalValue::default_new(Value::Bool(true))),
+                Some(OpCode::False) => self.push(FinalValue::default_new(Value::Bool(false))),
                 Some(OpCode::Equal) => {
                     let a = self.pop().clone();
                     let b = self.pop().clone();
-                    self.push(Value::Bool(self.values_equal(a, b)));
+                    self.push(FinalValue::default_new(Value::Bool(
+                        self.values_equal(a.value, b.value),
+                    )));
                 }
                 Some(OpCode::Greater) => self.binary_op_bool(|a, b| a > b),
                 Some(OpCode::Less) => self.binary_op_bool(|a, b| a < b),
@@ -204,16 +212,16 @@ impl<'a> VM<'a> {
                     return InterpretResult::InterpretOk;
                 }
                 Some(OpCode::Print) => {
-                    println!("{}", self.pop());
+                    println!("{}", self.pop().value);
                 }
                 Some(OpCode::Pop) => {
                     self.pop();
                 }
                 Some(OpCode::DefineGlobal) => {
-                    let var_name = self.read_constant();
+                    let var_name = self.read_constant().value;
                     if let Some(key) = var_name.as_string_obj().clone() {
                         let var_val = self.peek(0).clone();
-                        self.compiler.globals.set(key.hash, var_val);
+                        self.compiler.globals.set(key.hash, var_val.value);
                         self.pop();
                         // We pop after the value has been added to the hashtable. That ensures the VM can still find the variable if a garbage colleciton
                         // is triggered right in the middle of adding it to the hash table.
@@ -222,10 +230,11 @@ impl<'a> VM<'a> {
                     }
                 }
                 Some(OpCode::GetGlobal) => {
-                    let var_name = self.read_constant();
+                    let fin_value = self.read_constant();
+                    let var_name = fin_value.value;
                     if let Some(key) = var_name.as_string_obj().clone() {
                         if let Some(value) = self.compiler.globals.get(key.hash) {
-                            self.push(value.clone());
+                            self.push(FinalValue::new(value.clone(), fin_value.is_final));
                         } else {
                             return self.runtime_error(
                                 format!("Undefined variable {}.", key.as_str()).as_str(),
@@ -236,11 +245,14 @@ impl<'a> VM<'a> {
                     }
                 }
                 Some(OpCode::SetGlobal) => {
-                    let var_name = self.read_constant();
-
+                    let final_val = self.read_constant();
+                    if final_val.is_final {
+                        return self.var_final_error(&final_val);
+                    }
+                    let var_name = final_val.value;
                     if let Some(key) = var_name.as_string_obj().clone() {
                         let var_val = self.peek(0).clone();
-                        if self.compiler.globals.set(key.hash, var_val) {
+                        if self.compiler.globals.set(key.hash, var_val.value) {
                             self.compiler.globals.delete(key.hash);
                             self.runtime_error(
                                 format!("Undefined variable {}.", key.as_str()).as_str(),
@@ -251,6 +263,10 @@ impl<'a> VM<'a> {
                 }
                 Some(OpCode::SetLocal) => {
                     let slot = unsafe { self.read_byte() } as usize;
+                    let value_to_add_to_stack = self.peek(0).clone();
+                    if value_to_add_to_stack.is_final {
+                        return self.var_final_error(&value_to_add_to_stack);
+                    }
                     self.stack[slot as usize] = self.peek(0).clone();
                 }
                 Some(OpCode::GetLocal) => {
@@ -262,7 +278,7 @@ impl<'a> VM<'a> {
         }
     }
 
-    fn push(&mut self, value: Value) {
+    fn push(&mut self, value: FinalValue) {
         if (self.stack_top as usize) < STACK_MAX {
             self.stack[self.stack_top as usize] = value;
             self.stack_top += 1;
@@ -271,12 +287,12 @@ impl<'a> VM<'a> {
         }
     }
 
-    fn pop(&mut self) -> &Value {
+    fn pop(&mut self) -> &FinalValue {
         self.stack_top -= 1;
         &self.stack[self.stack_top as usize]
     }
 
-    fn peek(&mut self, distance: i32) -> &Value {
+    fn peek(&mut self, distance: i32) -> &FinalValue {
         if self.stack_top >= 1 + distance {
             &self.stack[(self.stack_top - 1 - distance) as usize]
         } else {
@@ -292,15 +308,15 @@ impl<'a> VM<'a> {
         let b = self.pop().clone();
         let a = self.pop().clone();
 
-        let b_str = b.as_string_obj().unwrap().clone();
-        let a_str = a.as_string_obj().unwrap().clone();
+        let b_str = b.value.as_string_obj().unwrap().clone();
+        let a_str = a.value.as_string_obj().unwrap().clone();
 
         let new_val = a_str.to_string() + &b_str.to_string();
         let value = Value::Object(Box::new(Obj::String(ObjString::new(
             new_val.as_bytes(),
             new_val.as_bytes().len(),
         ))));
-        self.push(value);
+        self.push(FinalValue::default_new(value));
     }
 
     fn values_equal(&self, a: Value, b: Value) -> bool {
@@ -315,6 +331,17 @@ impl<'a> VM<'a> {
             },
             Value::Nil => a == b,
         }
+    }
+
+    fn var_final_error(&mut self, final_val: &FinalValue) -> InterpretResult {
+        self.runtime_error(
+            format!(
+                "Variable '{}' is final and cannot be modified.",
+                final_val.value
+            )
+            .as_str(),
+        );
+        return InterpretResult::InterpretRuntimeError;
     }
 }
 

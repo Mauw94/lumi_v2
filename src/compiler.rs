@@ -52,6 +52,7 @@ struct TinyCompiler<'a> {
     locals: Vec<Local<'a>>,
     local_count: usize,
     scope_depth: usize,
+    is_final: bool,
 }
 
 impl<'a> TinyCompiler<'a> {
@@ -60,6 +61,7 @@ impl<'a> TinyCompiler<'a> {
             locals: Vec::new(),
             local_count: 0,
             scope_depth: 0,
+            is_final: false,
         }
     }
 }
@@ -212,7 +214,7 @@ impl<'a> Compiler<'a> {
     }
 
     fn make_constant(&mut self, value: Value) -> u8 {
-        let constant = self.chunk.add_constants(value);
+        let constant = self.chunk.add_constants(value, self.current.is_final);
         if constant as u8 > u8::MAX {
             self.error("Too many constants in one chunk.".as_bytes());
             return 0;
@@ -445,7 +447,7 @@ impl<'a> Compiler<'a> {
             return 0;
         }
 
-        // Cloning here doesn't matter since we just take the tokens bytes and length that we take from the byte array.
+        // Cloning here doesn't matter since we just take the tokens bytes and length that we took from the byte array.
         // We do not modify self.parser.previous.
         let previous = self.parser.previous.clone();
         self.identifier_constant(&previous)
@@ -482,6 +484,7 @@ impl<'a> Compiler<'a> {
     }
 
     fn var_declaration(&mut self) {
+        self.current.is_final = self.matches(TokenType::Final);
         let global: u8 = self.parse_variable("Expect variable name.".as_bytes());
 
         if self.matches(TokenType::Equal) {
@@ -523,7 +526,7 @@ impl<'a> Compiler<'a> {
             match self.parser.current.token_type {
                 TokenType::Class => {}
                 TokenType::Fun => {}
-                TokenType::Var => {}
+                TokenType::Let => {}
                 TokenType::For => {}
                 TokenType::If => {}
                 TokenType::While => {}
@@ -538,7 +541,7 @@ impl<'a> Compiler<'a> {
     }
 
     fn declaration(&mut self) {
-        if self.matches(TokenType::Var) {
+        if self.matches(TokenType::Let) {
             self.var_declaration();
         } else {
             self.statement();
@@ -890,7 +893,7 @@ impl<'a> Compiler<'a> {
             },
         );
         rules.insert(
-            TokenType::Var,
+            TokenType::Let,
             ParseRule {
                 prefix: None,
                 infix: None,

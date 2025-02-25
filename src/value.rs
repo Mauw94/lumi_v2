@@ -4,6 +4,36 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct FinalValue {
+    pub value: Value,
+    pub is_final: bool,
+}
+
+impl FinalValue {
+    pub fn default() -> Self {
+        Self {
+            value: Value::Nil,
+            is_final: false,
+        }
+    }
+
+    pub fn default_new(value: Value) -> Self {
+        Self {
+            value,
+            is_final: false,
+        }
+    }
+
+    pub fn new(value: Value, is_final: bool) -> Self {
+        Self { value, is_final }
+    }
+
+    pub fn get_value(&self) -> &Value {
+        &self.value
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Number(LNum),
     Bool(bool),
@@ -117,7 +147,7 @@ impl Value {
 
 #[derive(Debug, Clone)]
 pub struct ValueArray {
-    pub values: Vec<Value>,
+    pub values: Vec<FinalValue>,
 }
 
 impl ValueArray {
@@ -125,8 +155,8 @@ impl ValueArray {
         Self { values: Vec::new() }
     }
 
-    pub fn write_value(&mut self, value: Value) {
-        self.values.push(value);
+    pub fn write_value(&mut self, value: Value, is_final: bool) {
+        self.values.push(FinalValue::new(value, is_final));
     }
 
     pub fn free(&mut self) {
