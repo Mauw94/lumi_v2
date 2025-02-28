@@ -153,9 +153,8 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    #[allow(dead_code)]
-    fn current_chunk(&self) -> &Chunk {
-        &self.chunk
+    fn current_chunk(&mut self) -> &mut Chunk {
+        &mut self.chunk
     }
 
     fn advance(&mut self) {
@@ -209,6 +208,13 @@ impl<'a> Compiler<'a> {
         self.emit_byte(byte2);
     }
 
+    fn emit_jump(&mut self, instruction: u8) -> usize {
+        self.emit_byte(instruction);
+        self.emit_byte(0xff);
+        self.emit_byte(0xff);
+        return self.current_chunk().code.len() - 2;
+    }
+
     fn emit_return(&mut self) {
         self.emit_byte(OpCode::Return as u8);
     }
@@ -226,6 +232,16 @@ impl<'a> Compiler<'a> {
     fn emit_constant(&mut self, value: Value) {
         let constant = self.make_constant(value);
         self.emit_bytes(OpCode::Constant as u8, constant);
+    }
+
+    fn patch_jump(&mut self, offset: usize) {
+        let jump = self.current_chunk().code.len() - offset - 2;
+        if jump as u16 > u16::MAX {
+            self.error("Too much code to jump over.".as_bytes());
+        }
+
+        self.current_chunk().code[offset] = ((jump >> 8) & 0xff) as u8;
+        self.current_chunk().code[offset + 1] = (jump & 0xff) as u8;
     }
 
     fn end_compiler(&mut self) {
@@ -445,7 +461,7 @@ impl<'a> Compiler<'a> {
 
         if self.current.scope_depth > 0 {
             return 0;
-        }   
+        }
 
         // Cloning here doesn't matter since we just take the tokens bytes and length that we took from the byte array.
         // We do not modify self.parser.previous.
@@ -511,12 +527,27 @@ impl<'a> Compiler<'a> {
         self.emit_byte(OpCode::Pop as u8);
     }
 
+    fn if_statement(&mut self) {
+        self.consume(TokenType::LeftParen, "Expect '(' after 'if'.".as_bytes());
+        self.expression();
+        self.consume(
+            TokenType::RightParen,
+            "Expect ')' after condition.".as_bytes(),
+        );
+
+        let then_jump = self.emit_jump(OpCode::JumpIfFalse as u8);
+        self.statement();
+
+        self.patch_jump(then_jump);
+    }
+
     fn print_statement(&mut self) {
         self.expression();
         self.consume(TokenType::Semicolon, "Expect ';' after value.".as_bytes());
         self.emit_byte(OpCode::Print as u8);
     }
 
+    // FIXME: doesn't seem to sync up properly.
     fn synchronize(&mut self) {
         self.parser.panic_mode = false;
 
@@ -556,6 +587,8 @@ impl<'a> Compiler<'a> {
     fn statement(&mut self) {
         if self.matches(TokenType::Print) {
             self.print_statement();
+        } else if self.matches(TokenType::If) {
+            self.if_statement();
         } else if self.matches(TokenType::LeftBrace) {
             self.begin_scope();
             self.block();

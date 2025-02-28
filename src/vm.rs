@@ -91,6 +91,13 @@ impl<'a> VM<'a> {
         b
     }
 
+    unsafe fn read_short(&mut self) -> u16 {
+        let high = *self.ip as u16;
+        let low = *self.ip.add(1) as u16;
+        self.ip = self.ip.add(2);
+        (high << 8) | low
+    }
+
     fn read_constant(&mut self) -> FinalValue {
         let index = unsafe { self.read_byte() } as usize;
         self.compiler.chunk.constants.values[index].clone()
@@ -272,6 +279,13 @@ impl<'a> VM<'a> {
                 Some(OpCode::GetLocal) => {
                     let slot = unsafe { self.read_byte() } as usize;
                     self.push(self.stack[slot].clone());
+                }
+                Some(OpCode::JumpIfFalse) => {
+                    let offset = unsafe { self.read_short() };
+                    let value = self.peek(0).value.clone();
+                    if self.is_falsey(value) {
+                        self.ip = unsafe { self.ip.add(offset as usize) };
+                    }
                 }
                 _ => return InterpretResult::InterpretRuntimeError,
             };

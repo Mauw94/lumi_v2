@@ -23,6 +23,7 @@ pub enum OpCode {
     SetGlobal,
     GetLocal,
     SetLocal,
+    JumpIfFalse,
 }
 
 impl OpCode {
@@ -49,6 +50,7 @@ impl OpCode {
             18 => Some(OpCode::SetGlobal),
             19 => Some(OpCode::GetLocal),
             20 => Some(OpCode::SetLocal),
+            21 => Some(OpCode::JumpIfFalse),
             _ => None,
         }
     }
@@ -56,8 +58,6 @@ impl OpCode {
 
 #[derive(Debug, Clone)]
 pub struct Chunk {
-    pub count: usize,
-    pub capacity: usize,
     pub code: Vec<u8>,
     pub lines: Vec<i32>,
     pub constants: ValueArray,
@@ -68,14 +68,11 @@ pub trait ChunkWrite {
     fn write_chunk(&mut self, byte: u8, line: i32);
     fn add_constants(&mut self, value: Value, is_final: bool) -> usize;
     fn free(&mut self);
-    fn grow_capacity(&self, capacity: usize) -> usize;
 }
 
 impl ChunkWrite for Chunk {
     fn new() -> Self {
         Self {
-            count: 0,
-            capacity: 0,
             code: Vec::new(),
             lines: Vec::new(),
             constants: ValueArray::new(),
@@ -83,15 +80,8 @@ impl ChunkWrite for Chunk {
     }
 
     fn write_chunk(&mut self, byte: u8, line: i32) {
-        if self.capacity <= self.count {
-            self.capacity = self.grow_capacity(self.capacity);
-            self.code.reserve(self.capacity - self.code.len());
-            self.lines.reserve(self.capacity - self.lines.len());
-        }
-
         self.code.push(byte);
         self.lines.push(line);
-        self.count += 1;
     }
 
     fn add_constants(&mut self, value: Value, is_final: bool) -> usize {
@@ -103,13 +93,5 @@ impl ChunkWrite for Chunk {
         self.code.clear();
         self.lines.clear();
         self.constants.free();
-    }
-
-    fn grow_capacity(&self, capacity: usize) -> usize {
-        if capacity < 8 {
-            8
-        } else {
-            capacity * 2
-        }
     }
 }
