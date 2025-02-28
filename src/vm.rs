@@ -47,6 +47,8 @@ impl<'a> VM<'a> {
             self.compiler.chunk.free();
             return InterpretResult::InterpretCompileError;
         }
+
+        // Get the byte vector as a raw pointer to the memory address.
         self.ip = self.compiler.chunk.code.as_ptr();
 
         let result = self.run();
@@ -85,12 +87,14 @@ impl<'a> VM<'a> {
         return InterpretResult::InterpretRuntimeError;
     }
 
+    // Moves the pointer forward 1 byte.
     unsafe fn read_byte(&mut self) -> u8 {
         let b = *self.ip;
         self.ip = self.ip.add(1);
         b
     }
 
+    // Moves the pointer forward 2 bytes.
     unsafe fn read_short(&mut self) -> u16 {
         let high = *self.ip as u16;
         let low = *self.ip.add(1) as u16;
@@ -230,7 +234,8 @@ impl<'a> VM<'a> {
                         let var_val = self.peek(0).clone();
                         self.compiler.globals.set(key.hash, var_val.value);
                         self.pop();
-                        // We pop after the value has been added to the hashtable. That ensures the VM can still find the variable if a garbage colleciton
+                        // We pop after the value has been added to the hashtable.
+                        // That ensures the VM can still find the variable if a garbage collection.
                         // is triggered right in the middle of adding it to the hash table.
                     } else {
                         return self.runtime_error("Constant is not a string.");
