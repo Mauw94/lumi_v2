@@ -445,7 +445,7 @@ impl<'a> Compiler<'a> {
 
         if self.current.scope_depth > 0 {
             return 0;
-        }
+        }   
 
         // Cloning here doesn't matter since we just take the tokens bytes and length that we took from the byte array.
         // We do not modify self.parser.previous.
@@ -485,6 +485,7 @@ impl<'a> Compiler<'a> {
 
     fn var_declaration(&mut self) {
         self.current.is_final = self.matches(TokenType::Final);
+        // FIXME: emit final opcode here
         let global: u8 = self.parse_variable("Expect variable name.".as_bytes());
 
         if self.matches(TokenType::Equal) {
