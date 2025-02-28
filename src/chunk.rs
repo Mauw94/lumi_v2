@@ -24,6 +24,7 @@ pub enum OpCode {
     GetLocal,
     SetLocal,
     JumpIfFalse,
+    Jump,
 }
 
 impl OpCode {
@@ -51,6 +52,7 @@ impl OpCode {
             19 => Some(OpCode::GetLocal),
             20 => Some(OpCode::SetLocal),
             21 => Some(OpCode::JumpIfFalse),
+            22 => Some(OpCode::Jump),
             _ => None,
         }
     }

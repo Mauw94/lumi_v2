@@ -536,9 +536,18 @@ impl<'a> Compiler<'a> {
         );
 
         let then_jump = self.emit_jump(OpCode::JumpIfFalse as u8);
+        self.emit_byte(OpCode::Pop as u8);
         self.statement();
 
+        let else_jump = self.emit_jump(OpCode::Jump as u8);
+
         self.patch_jump(then_jump);
+        self.emit_byte(OpCode::Pop as u8);
+
+        if self.matches(TokenType::Else) {
+            self.statement();
+        }
+        self.patch_jump(else_jump);
     }
 
     fn print_statement(&mut self) {

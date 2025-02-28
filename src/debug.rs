@@ -4,7 +4,6 @@ use crate::chunk::{Chunk, OpCode};
 pub fn disassemble_chunk(chunk: Chunk, chunk_name: &str) {
     println!("== {} == \n", chunk_name);
 
-    // println!("{}", chunk.count);
     let mut offset = 0;
     while offset < chunk.code.len() {
         offset += disassemble_instruction(&chunk, offset);
@@ -42,12 +41,22 @@ pub fn disassemble_instruction(chunk: &Chunk, offset: usize) -> usize {
         Some(OpCode::SetGlobal) => simple_instruction("OP_SET_GLOBAL"),
         Some(OpCode::GetLocal) => byte_instruction("OP_GET_LOCAL", chunk, offset),
         Some(OpCode::SetLocal) => byte_instruction("OP_SET_LOCAL", chunk, offset),
-        Some(OpCode::JumpIfFalse) => simple_instruction("OP_JUMP_IF_FALSE"),
+        Some(OpCode::JumpIfFalse) => jump_instruction("OP_JUMP_IF_FALSE", 1, chunk, offset),
+        Some(OpCode::Jump) => jump_instruction("OP_JUMP", 1, chunk, offset),
         None => {
             println!("Unknown opcode {}", instruction);
             offset + 1
         }
     }
+}
+
+fn jump_instruction(name: &str, sign: isize, chunk: &Chunk, offset: usize) -> usize {
+    let jump = ((chunk.code[offset + 1] as u16) << 8) | (chunk.code[offset + 2] as u16);
+    let target = offset + 3 + (sign * jump as isize) as usize;
+
+    println!("{:<16} {:4} -> {}", name, offset, target);
+
+    3
 }
 
 fn constant_instruction(name: &str, chunk: &Chunk, offset: usize) -> usize {

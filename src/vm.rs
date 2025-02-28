@@ -280,6 +280,10 @@ impl<'a> VM<'a> {
                     let slot = unsafe { self.read_byte() } as usize;
                     self.push(self.stack[slot].clone());
                 }
+                Some(OpCode::Jump) => {
+                    let offset = unsafe { self.read_short() };
+                    self.ip = unsafe { self.ip.add(offset as usize) };
+                }
                 Some(OpCode::JumpIfFalse) => {
                     let offset = unsafe { self.read_short() };
                     let value = self.peek(0).value.clone();
