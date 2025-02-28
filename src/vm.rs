@@ -296,6 +296,10 @@ impl<'a> VM<'a> {
                         self.ip = unsafe { self.ip.add(offset as usize) };
                     }
                 }
+                Some(OpCode::Loop) => {
+                    let offset = unsafe { self.read_short() };
+                    self.ip = unsafe { self.ip.sub(offset as usize) };
+                }
                 _ => return InterpretResult::InterpretRuntimeError,
             };
         }

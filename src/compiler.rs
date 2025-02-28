@@ -208,6 +208,18 @@ impl<'a> Compiler<'a> {
         self.emit_byte(byte2);
     }
 
+    fn emit_loop(&mut self, loop_start: usize) {
+        self.emit_byte(OpCode::Loop as u8);
+
+        let offset = self.current_chunk().code.len() - loop_start + 2;
+        if offset as u16 > u16::MAX {
+            self.error("Loop body too large.".as_bytes());
+        }
+
+        self.emit_byte(((offset >> 8) & 0xff) as u8);
+        self.emit_byte((offset & 0xff) as u8);
+    }
+
     fn emit_jump(&mut self, instruction: u8) -> usize {
         self.emit_byte(instruction);
         self.emit_byte(0xff);
@@ -307,6 +319,17 @@ impl<'a> Compiler<'a> {
     fn number(&mut self) {
         let val = strtod_manual(&self.parser.previous.start).unwrap();
         self.emit_constant(Value::Number(val));
+    }
+
+    fn or(&mut self) {
+        let else_jump = self.emit_jump(OpCode::JumpIfFalse as u8);
+        let end_jump = self.emit_jump(OpCode::Jump as u8);
+
+        self.patch_jump(else_jump);
+        self.emit_byte(OpCode::Pop as u8);
+
+        self.parse_precedence(Precedence::Or);
+        self.patch_jump(end_jump);
     }
 
     fn string(&mut self) {
@@ -482,6 +505,15 @@ impl<'a> Compiler<'a> {
         self.emit_bytes(OpCode::DefineGlobal as u8, global);
     }
 
+    fn and(&mut self) {
+        let end_jump = self.emit_jump(OpCode::JumpIfFalse as u8);
+
+        self.emit_byte(OpCode::Pop as u8);
+        self.parse_precedence(Precedence::And);
+
+        self.patch_jump(end_jump);
+    }
+
     fn get_rule(&mut self, token_type: TokenType) -> ParseRule<'a> {
         let rules = self.rules();
         *rules.get(&token_type).unwrap()
@@ -527,6 +559,56 @@ impl<'a> Compiler<'a> {
         self.emit_byte(OpCode::Pop as u8);
     }
 
+    fn for_statement(&mut self) {
+        self.begin_scope();
+        self.consume(TokenType::LeftParen, "Expect '(' after 'for'.".as_bytes());
+        if self.matches(TokenType::Semicolon) {
+            // no initializer.
+        } else if self.matches(TokenType::Let) {
+            self.var_declaration();
+        } else {
+            self.expression_statement();
+        }
+
+        let mut loop_start = self.current_chunk().code.len();
+        let mut exit_jump = 0;
+        if !self.matches(TokenType::Semicolon) {
+            self.expression();
+            self.consume(
+                TokenType::Semicolon,
+                "Expect ';' after loop condition.".as_bytes(),
+            );
+
+            exit_jump = self.emit_jump(OpCode::JumpIfFalse as u8);
+            self.emit_byte(OpCode::Pop as u8);
+        }
+
+        if !self.matches(TokenType::RightParen) {
+            let body_jump = self.emit_jump(OpCode::Jump as u8);
+            let increment_start = self.current_chunk().code.len();
+            self.expression();
+            self.emit_byte(OpCode::Pop as u8);
+            self.consume(
+                TokenType::RightParen,
+                "Expect ')' after for clauses.".as_bytes(),
+            );
+
+            self.emit_loop(loop_start);
+            loop_start = increment_start;
+            self.patch_jump(body_jump);
+        }
+
+        self.statement();
+        self.emit_loop(loop_start);
+
+        if exit_jump != 0 {
+            self.patch_jump(exit_jump);
+            self.emit_byte(OpCode::Pop as u8);
+        }
+
+        self.end_scope();
+    }
+
     fn if_statement(&mut self) {
         self.consume(TokenType::LeftParen, "Expect '(' after 'if'.".as_bytes());
         self.expression();
@@ -554,6 +636,24 @@ impl<'a> Compiler<'a> {
         self.expression();
         self.consume(TokenType::Semicolon, "Expect ';' after value.".as_bytes());
         self.emit_byte(OpCode::Print as u8);
+    }
+
+    fn while_statement(&mut self) {
+        let loop_start = self.current_chunk().code.len();
+        self.consume(TokenType::LeftParen, "Expect '(' after 'while'.".as_bytes());
+        self.expression();
+        self.consume(
+            TokenType::RightParen,
+            "Expect ')' after condition.".as_bytes(),
+        );
+
+        let exit_jump = self.emit_jump(OpCode::JumpIfFalse as u8);
+        self.emit_byte(OpCode::Pop as u8);
+        self.statement();
+        self.emit_loop(loop_start);
+
+        self.patch_jump(exit_jump);
+        self.emit_byte(OpCode::Pop as u8);
     }
 
     // FIXME: doesn't seem to sync up properly.
@@ -596,8 +696,12 @@ impl<'a> Compiler<'a> {
     fn statement(&mut self) {
         if self.matches(TokenType::Print) {
             self.print_statement();
+        } else if self.matches(TokenType::For) {
+            self.for_statement();
         } else if self.matches(TokenType::If) {
             self.if_statement();
+        } else if self.matches(TokenType::While) {
+            self.while_statement();
         } else if self.matches(TokenType::LeftBrace) {
             self.begin_scope();
             self.block();
@@ -827,8 +931,8 @@ impl<'a> Compiler<'a> {
             TokenType::And,
             ParseRule {
                 prefix: None,
-                infix: None,
-                precedence: Precedence::None,
+                infix: Some(Self::and),
+                precedence: Precedence::And,
             },
         );
         rules.insert(
@@ -891,8 +995,8 @@ impl<'a> Compiler<'a> {
             TokenType::Or,
             ParseRule {
                 prefix: None,
-                infix: None,
-                precedence: Precedence::None,
+                infix: Some(Self::or),
+                precedence: Precedence::Or,
             },
         );
         rules.insert(

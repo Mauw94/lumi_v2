@@ -5,3 +5,7 @@
 * BUG: you can still modify a variable inside a different scope outside of global
 lumi> let final a = 1;
 lumi> { let b = 2; a = 2; print a; }
+
+
+* Add continue keyword
+* Add switch statements

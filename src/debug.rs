@@ -43,6 +43,7 @@ pub fn disassemble_instruction(chunk: &Chunk, offset: usize) -> usize {
         Some(OpCode::SetLocal) => byte_instruction("OP_SET_LOCAL", chunk, offset),
         Some(OpCode::JumpIfFalse) => jump_instruction("OP_JUMP_IF_FALSE", 1, chunk, offset),
         Some(OpCode::Jump) => jump_instruction("OP_JUMP", 1, chunk, offset),
+        Some(OpCode::Loop) => jump_instruction("OP_LOOP", 1, chunk, offset),
         None => {
             println!("Unknown opcode {}", instruction);
             offset + 1
