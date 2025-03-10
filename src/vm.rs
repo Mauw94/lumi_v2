@@ -19,6 +19,7 @@ pub enum InterpretResult {
 
 const STACK_MAX: usize = 256;
 
+// FIXME: we need a 'shadow' stack of some sorts to be able to evaluate results for testing.
 // Our virtual machine.
 #[derive(Debug)]
 pub struct VM<'a> {
@@ -83,6 +84,7 @@ impl<'a> VM<'a> {
         let line = self.compiler.chunk.lines[instruction];
         writeln!(handle, "[line {}] in script", line).unwrap();
 
+        // FIXME: stack is not synced anymore after runtime
         self.reset_stack();
         return InterpretResult::InterpretRuntimeError;
     }
@@ -223,7 +225,8 @@ impl<'a> VM<'a> {
                     return InterpretResult::InterpretOk;
                 }
                 Some(OpCode::Print) => {
-                    println!("{}", self.pop().value);
+                    let res = self.pop();
+                    println!("{}", res.value);
                 }
                 Some(OpCode::Pop) => {
                     self.pop();

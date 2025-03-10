@@ -89,11 +89,8 @@ macro_rules! benchmark {
     };
 }
 
-// TODO: re-eval this
-
 // #[cfg(test)]
 // mod test {
-//     use std::rc::Rc;
 
 //     use crate::{
 //         lnum::{LInt, LNum},
@@ -104,10 +101,10 @@ macro_rules! benchmark {
 
 //     #[test]
 //     fn binary_op_add() {
-//         let code: &str = "1 + 1\n";
-//         let mut vm = VM::init_vm(&code);
+//         let code: &str = "print 1 + 1;\n";
+//         let mut vm = VM::init_vm();
 //         assert_eq!(
-//             vm.interpret(),
+//             vm.interpret(&code),
 //             InterpretResult::InterpretOk(Value::Number(LNum::Int(LInt::Small(2))))
 //         );
 //     }
@@ -115,81 +112,86 @@ macro_rules! benchmark {
 //     #[test]
 //     fn binary_op_minus() {
 //         let code: &str = "print 7 - 1;\n";
-//         let mut vm = VM::init_vm(&code);
-//         assert_eq!(vm.interpret(), Value::Number(LNum::Int(LInt::Small(6))));
+//         let mut vm = VM::init_vm();
+//         assert_eq!(
+//             vm.interpret(&code),
+//             InterpretResult::InterpretOk(Value::Number(LNum::Int(LInt::Small(6))))
+//         );
 //     }
 
 //     #[test]
 //     fn binary_op_divide() {
-//         let code: &str = "12 / 3\n";
-//         let mut vm = VM::init_vm(&code);
+//         let code: &str = "print 12 / 3;\n";
+//         let mut vm = VM::init_vm();
 //         assert_eq!(
-//             vm.interpret(),
+//             vm.interpret(&code),
 //             InterpretResult::InterpretOk(Value::Number(LNum::Int(LInt::Small(4))))
 //         );
 //     }
 
 //     #[test]
 //     fn binary_op_multiply() {
-//         let code: &str = "3 * 7\n";
-//         let mut vm = VM::init_vm(&code);
+//         let code: &str = "print 3 * 7;\n";
+//         let mut vm = VM::init_vm();
 //         assert_eq!(
-//             vm.interpret(),
+//             vm.interpret(&code),
 //             InterpretResult::InterpretOk(Value::Number(LNum::Int(LInt::Small(21))))
 //         );
 //     }
 
 //     #[test]
 //     fn equals_int() {
-//         let code: &str = "3 + 7 == 10\n";
-//         let mut vm = VM::init_vm(&code);
+//         let code: &str = "print 3 + 7 == 10;\n";
+//         let mut vm = VM::init_vm();
 //         assert_eq!(
-//             vm.interpret(),
+//             vm.interpret(&code),
 //             InterpretResult::InterpretOk(Value::Bool(true))
 //         );
 //     }
 
 //     #[test]
 //     fn print_string() {
-//         let mut vm = init_vm("\"abc\"\n");
+//         let code: &str = "print \"abc\";\n";
+//         let mut vm = VM::init_vm();
 //         assert_eq!(
-//             vm.interpret(),
-//             InterpretResult::InterpretOk(Value::Object(Box::new(Obj::String(Rc::new(
-//                 ObjString::new("abc".as_bytes(), "abc".as_bytes().len())
+//             vm.interpret(&code),
+//             InterpretResult::InterpretOk(Value::Object(Box::new(Obj::String(ObjString::new(
+//                 "abc".as_bytes(),
+//                 "abc".as_bytes().len()
 //             )))))
 //         );
 //     }
 
 //     #[test]
 //     fn concat_strings() {
-//         let mut vm = init_vm("\"a\" + \"b\"\n");
+//         let code: &str = "print \"a\" + \"b\";\n";
+//         let mut vm = VM::init_vm();
 //         assert_eq!(
-//             vm.interpret(),
-//             InterpretResult::InterpretOk(Value::Object(Box::new(Obj::String(Rc::new(
-//                 ObjString::new("ab".as_bytes(), "ab".as_bytes().len())
+//             vm.interpret(&code),
+//             InterpretResult::InterpretOk(Value::Object(Box::new(Obj::String(ObjString::new(
+//                 "ab".as_bytes(),
+//                 "ab".as_bytes().len()
 //             )))))
 //         );
 //     }
 
 //     #[test]
 //     fn equals_string() {
-//         let mut vm = init_vm("\"test\" + \"a\" == \"testa\"\n");
+//         let code: &str = "print \"test\" + \"a\" == \"testa\";\n";
+//         let mut vm = VM::init_vm();
 //         assert_eq!(
-//             vm.interpret(),
+//             vm.interpret(&code),
 //             InterpretResult::InterpretOk(Value::Bool(true))
 //         );
 //     }
 
 //     #[test]
 //     fn not_equals_string() {
-//         let mut vm = init_vm("\"test\" + \"abc\" == \"ahjskd\"\n");
+//         let code: &str = "print \"test\" + \"abc\" == \"ahjskd\";\n";
+//         let mut vm = VM::init_vm();
 //         assert_eq!(
-//             vm.interpret(),
+//             vm.interpret(&code),
 //             InterpretResult::InterpretOk(Value::Bool(false))
 //         );
-//     }
-
-//     fn init_vm(code: &str) -> VM {
-//         VM::init_vm(code)
 //     }
 // }
