@@ -89,25 +89,71 @@ macro_rules! benchmark {
     };
 }
 
-// #[cfg(test)]
-// mod test {
+#[cfg(test)]
+mod test {
 
-//     use crate::{
-//         lnum::{LInt, LNum},
-//         object::{Obj, ObjString},
-//         value::Value,
-//         vm::{InterpretResult, VM},
-//     };
+    use crate::{
+        lnum::{LInt, LNum},
+        object::{Obj, ObjString},
+        value::Value,
+        vm::VM,
+    };
 
-//     #[test]
-//     fn binary_op_add() {
-//         let code: &str = "print 1 + 1;\n";
-//         let mut vm = VM::init_vm();
-//         assert_eq!(
-//             vm.interpret(&code),
-//             InterpretResult::InterpretOk(Value::Number(LNum::Int(LInt::Small(2))))
-//         );
-//     }
+    #[test]
+    fn binary_op_add() {
+        let code: &str = "print 1 + 1;\n";
+        let mut vm = VM::init_vm();
+        vm.interpret(&code);
+        assert_eq!(
+            vm.test_values.pop().unwrap(),
+            Value::Number(LNum::Int(LInt::Small(2)))
+        );
+    }
+
+    #[test]
+    fn equals_int() {
+        let code: &str = "print 3 + 7 == 10;\n";
+        let mut vm = VM::init_vm();
+        vm.interpret(&code);
+        assert_eq!(vm.test_values.pop().unwrap(), Value::Bool(true));
+    }
+
+    #[test]
+    fn print_string() {
+        let code: &str = "print \"abc\";\n";
+        let mut vm = VM::init_vm();
+        vm.interpret(&code);
+        assert_eq!(
+            vm.test_values.pop().unwrap(),
+            Value::Object(Box::new(Obj::String(ObjString::new(
+                "abc".as_bytes(),
+                "abc".as_bytes().len()
+            ))))
+        );
+    }
+
+    #[test]
+    fn concat_strings() {
+        let code: &str = "print \"a\" + \"b\";\n";
+        let mut vm = VM::init_vm();
+        vm.interpret(&code);
+        assert_eq!(
+            vm.test_values.pop().unwrap(),
+            Value::Object(Box::new(Obj::String(ObjString::new(
+                "ab".as_bytes(),
+                "ab".as_bytes().len()
+            ))))
+        );
+    }
+
+    #[test]
+    fn equals_string() {
+        let code: &str = "print \"test\" + \"a\" == \"testa\";\n";
+        let mut vm = VM::init_vm();
+        vm.interpret(&code);
+        assert_eq!(vm.test_values.pop().unwrap(), Value::Bool(true));
+    }
+}
 
 //     #[test]
 //     fn binary_op_minus() {
@@ -146,32 +192,6 @@ macro_rules! benchmark {
 //         assert_eq!(
 //             vm.interpret(&code),
 //             InterpretResult::InterpretOk(Value::Bool(true))
-//         );
-//     }
-
-//     #[test]
-//     fn print_string() {
-//         let code: &str = "print \"abc\";\n";
-//         let mut vm = VM::init_vm();
-//         assert_eq!(
-//             vm.interpret(&code),
-//             InterpretResult::InterpretOk(Value::Object(Box::new(Obj::String(ObjString::new(
-//                 "abc".as_bytes(),
-//                 "abc".as_bytes().len()
-//             )))))
-//         );
-//     }
-
-//     #[test]
-//     fn concat_strings() {
-//         let code: &str = "print \"a\" + \"b\";\n";
-//         let mut vm = VM::init_vm();
-//         assert_eq!(
-//             vm.interpret(&code),
-//             InterpretResult::InterpretOk(Value::Object(Box::new(Obj::String(ObjString::new(
-//                 "ab".as_bytes(),
-//                 "ab".as_bytes().len()
-//             )))))
 //         );
 //     }
 

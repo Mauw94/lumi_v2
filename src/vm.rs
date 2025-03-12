@@ -19,10 +19,10 @@ pub enum InterpretResult {
 
 const STACK_MAX: usize = 256;
 
-// FIXME: we need a 'shadow' stack of some sorts to be able to evaluate results for testing.
 // Our virtual machine.
 #[derive(Debug)]
 pub struct VM<'a> {
+    pub test_values: Vec<Value>, // Rather not have this in the vm, but it'll have to do for now when in full development.
     compiler: Compiler<'a>,
     ip: *const u8,
     stack: [FinalValue; STACK_MAX],
@@ -34,12 +34,13 @@ pub struct VM<'a> {
 impl<'a> VM<'a> {
     pub fn init_vm() -> Self {
         Self {
+            test_values: Vec::new(),
+            compiler: Compiler::new(),
             ip: std::ptr::null(),
             stack: core::array::from_fn(|_| FinalValue::default()),
             stack_top: 0,
             objects: Box::new(Vec::new()),
             had_error: false,
-            compiler: Compiler::new(),
         }
     }
 
@@ -225,8 +226,10 @@ impl<'a> VM<'a> {
                     return InterpretResult::InterpretOk;
                 }
                 Some(OpCode::Print) => {
-                    let res = self.pop();
+                    let res = self.pop().clone();
                     println!("{}", res.value);
+
+                    self.test_values.push(res.value);
                 }
                 Some(OpCode::Pop) => {
                     self.pop();
