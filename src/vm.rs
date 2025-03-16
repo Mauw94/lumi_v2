@@ -124,7 +124,7 @@ impl<'a> VM<'a> {
         if let (Value::Number(b), Value::Number(a)) = (b, a) {
             let b_val = b.real_val();
             let a_val = a.real_val();
-            self.push(FinalValue::default_new(Value::Number(LNum::new(op(
+            self.push(FinalValue::default_with_value(Value::Number(LNum::new(op(
                 a_val, b_val,
             )))));
         }
@@ -144,7 +144,7 @@ impl<'a> VM<'a> {
         if let (Value::Number(b), Value::Number(a)) = (b, a) {
             let b_val = b.real_val();
             let a_val = a.real_val();
-            self.push(FinalValue::default_new(Value::Bool(op(a_val, b_val))));
+            self.push(FinalValue::default_with_value(Value::Bool(op(a_val, b_val))));
         }
     }
 
@@ -175,7 +175,7 @@ impl<'a> VM<'a> {
                     }
                     let value = self.pop().clone();
                     match value.value.negate() {
-                        Ok(negated_value) => self.push(FinalValue::default_new(negated_value)),
+                        Ok(negated_value) => self.push(FinalValue::default_with_value(negated_value)),
                         Err(err) => panic!("{}", err),
                     }
                 }
@@ -188,7 +188,7 @@ impl<'a> VM<'a> {
                         if let (Value::Number(b), Value::Number(a)) = (b, a) {
                             let b_val = b.real_val();
                             let a_val = a.real_val();
-                            self.push(FinalValue::default_new(Value::Number(LNum::new(
+                            self.push(FinalValue::default_with_value(Value::Number(LNum::new(
                                 a_val + b_val,
                             ))));
                         }
@@ -208,15 +208,15 @@ impl<'a> VM<'a> {
                 Some(OpCode::Not) => {
                     let value = self.pop().clone();
                     let is_falsey = self.is_falsey(value.value);
-                    self.push(FinalValue::default_new(Value::Bool(is_falsey)));
+                    self.push(FinalValue::default_with_value(Value::Bool(is_falsey)));
                 }
-                Some(OpCode::Nil) => self.push(FinalValue::default_new(Value::Nil)),
-                Some(OpCode::True) => self.push(FinalValue::default_new(Value::Bool(true))),
-                Some(OpCode::False) => self.push(FinalValue::default_new(Value::Bool(false))),
+                Some(OpCode::Nil) => self.push(FinalValue::default_with_value(Value::Nil)),
+                Some(OpCode::True) => self.push(FinalValue::default_with_value(Value::Bool(true))),
+                Some(OpCode::False) => self.push(FinalValue::default_with_value(Value::Bool(false))),
                 Some(OpCode::Equal) => {
                     let a = self.pop().clone();
                     let b = self.pop().clone();
-                    self.push(FinalValue::default_new(Value::Bool(
+                    self.push(FinalValue::default_with_value(Value::Bool(
                         self.values_equal(a.value, b.value),
                     )));
                 }
@@ -349,7 +349,7 @@ impl<'a> VM<'a> {
             new_val.as_bytes(),
             new_val.as_bytes().len(),
         ))));
-        self.push(FinalValue::default_new(value));
+        self.push(FinalValue::default_with_value(value));
     }
 
     fn values_equal(&self, a: Value, b: Value) -> bool {

@@ -17,7 +17,7 @@ impl FinalValue {
         }
     }
 
-    pub fn default_new(value: Value) -> Self {
+    pub fn default_with_value(value: Value) -> Self {
         Self {
             value,
             is_final: false,
