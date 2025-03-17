@@ -1,4 +1,7 @@
-use crate::utils::hash_str;
+use crate::{
+    chunk::{Chunk, ChunkWrite},
+    utils::hash_str,
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ObjType {
@@ -8,6 +11,7 @@ pub enum ObjType {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Obj {
     String(ObjString),
+    Function(ObjFunction),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -15,6 +19,13 @@ pub struct ObjString {
     length: usize,
     chars: Vec<u8>,
     pub hash: u32,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ObjFunction {
+    arity: usize,
+    chunk: Chunk,
+    name: Option<ObjString>,
 }
 
 impl ObjString {
@@ -36,5 +47,15 @@ impl ObjString {
         std::str::from_utf8(&self.chars)
             .expect("Expecting a valid UTF-8 representation.")
             .to_string()
+    }
+}
+
+impl ObjFunction {
+    pub fn new() -> Self {
+        Self {
+            arity: 0,
+            chunk: Chunk::new(),
+            name: None,
+        }
     }
 }

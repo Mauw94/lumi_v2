@@ -106,6 +106,7 @@ impl Value {
         match self {
             Value::Object(obj) => match &**obj {
                 Obj::String(_) => Some(ObjType::String),
+                Obj::Function(obj_function) => todo!(),
             },
             _ => None,
         }
@@ -124,6 +125,7 @@ impl Value {
         match self {
             Value::Object(obj) => match &**obj {
                 Obj::String(obj_string) => Some(obj_string),
+                Obj::Function(obj_function) => todo!(),
             },
             _ => None,
         }
@@ -145,7 +147,7 @@ impl Value {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ValueArray {
     pub values: Vec<FinalValue>,
 }
@@ -176,6 +178,7 @@ impl std::fmt::Display for Value {
             Value::Number(val) => write!(f, "{}", val),
             Value::Object(obj) => match &**obj {
                 Obj::String(obj_string) => write!(f, "{}", obj_string.as_str()),
+                Obj::Function(obj_function) => todo!(),
             },
         }
     }

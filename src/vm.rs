@@ -361,6 +361,7 @@ impl<'a> VM<'a> {
             Value::Bool(_) => a == b,
             Value::Object(ref obj) => match &**obj {
                 Obj::String(_) => a.as_c_string() == b.as_c_string(),
+                Obj::Function(obj_function) => todo!(),
             },
             Value::Nil => a == b,
         }
